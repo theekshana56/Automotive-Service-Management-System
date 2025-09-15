@@ -66,7 +66,7 @@ export default function Register(){
       data.append('email', form.email);
       data.append('password', form.password);
       if (avatar) data.append('avatar', avatar);
-      await api.post('/auth/register', data, { headers: { 'Content-Type': 'multipart/form-data' } });
+  await api.post('/api/auth/register', data, { headers: { 'Content-Type': 'multipart/form-data' } });
       nav('/login');
     }catch(e){ 
       setErr(e.response?.data?.message || 'Registration failed'); 

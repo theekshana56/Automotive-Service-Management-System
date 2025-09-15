@@ -9,17 +9,18 @@ export function issueTokens(user) {
 }
 
 export function setAuthCookies(res, { access, refresh }) {
-  const opts = { httpOnly: true, sameSite: 'lax', secure: false };
-  res.cookie('access_token', access, { ...opts, maxAge: 15 * 60 * 1000 });
-  res.cookie('refresh_token', refresh, { ...opts, maxAge: 7 * 24 * 60 * 60 * 1000 });
+  const opts = { httpOnly: true, sameSite: 'lax', secure: false, domain: 'localhost' };
+  res.cookie('access_token', access, { ...opts, maxAge: 15 * 60 * 1000, path: '/' });
+  res.cookie('refresh_token', refresh, { ...opts, maxAge: 7 * 24 * 60 * 60 * 1000, path: '/' });
 }
 
 export function clearAuthCookies(res) {
-  res.clearCookie('access_token');
-  res.clearCookie('refresh_token');
+  const opts = { httpOnly: true, sameSite: 'lax', secure: false, domain: 'localhost', path: '/' };
+  res.clearCookie('access_token', opts);
+  res.clearCookie('refresh_token', opts);
 }
 
-export function authRequired(req, res, next) {
+export default function authRequired(req, res, next) {
   try {
     const token = req.cookies['access_token'];
     if (!token) return res.status(401).json({ message: 'Unauthorized' });

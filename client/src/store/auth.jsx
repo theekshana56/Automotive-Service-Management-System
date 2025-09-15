@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
         const parsedUser = JSON.parse(savedUser);
         setUser(parsedUser);
         // Verify the user is still authenticated
-        api.get('/auth/me')
+  api.get('/api/auth/me')
           .then(response => {
             setUser(response.data.user);
             localStorage.setItem("user", JSON.stringify(response.data.user));
@@ -69,7 +69,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
     // Call backend logout
-    api.post('/auth/logout').catch(() => {}); // Ignore errors
+  api.post('/api/auth/logout').catch(() => {}); // Ignore errors
   };
 
   // Check if user has specific role

@@ -4,7 +4,7 @@ import Input from '../components/Input';
 import { useAuth } from '../store/auth';
 import React from 'react';
 
-const BACKEND_URL = "http://localhost:5000";
+const BACKEND_URL = "";
 
 export default function Profile(){
   const { user, setUser } = useAuth();
@@ -44,7 +44,7 @@ export default function Profile(){
       const { data } = await api.post('/users/loyalty-discount-request');
       setDiscountMessage(data.message);
       // Refresh user data to update loyalty status
-      const userResponse = await api.get('/auth/me');
+  const userResponse = await api.get('/api/auth/me');
       setUser(userResponse.data.user);
     } catch (error) {
       setDiscountMessage(error.response?.data?.message || 'Failed to request discount');
@@ -58,9 +58,16 @@ export default function Profile(){
       <h1 className="text-2xl font-semibold mb-6 section-title">My Profile</h1>
       <div className="flex flex-col sm:flex-row items-center gap-6 mb-8">
         <img
-          src={user?.avatarUrl ? `${BACKEND_URL}${user.avatarUrl}` : 'https://via.placeholder.com/96?text=AE'}
+          src={user?.avatarUrl ? `${user.avatarUrl}` : 'logo.svg'}
           alt="avatar"
           className="w-24 h-24 rounded-2xl object-cover border"
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = 'logo.svg';
+            if (e.target.src.includes('logo.svg')) {
+              e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><rect width="96" height="96" fill="%23007BFF"/><text x="50%" y="50%" font-size="24" text-anchor="middle" dy=".3em" fill="white">AE</text></svg>';
+            }
+          }}
         />
         <label className="btn cursor-pointer mt-4 sm:mt-0">
           {uploading ? 'Uploading...' : 'Change Photo'}

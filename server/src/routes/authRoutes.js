@@ -1,11 +1,15 @@
 import { Router } from 'express';
 import { authLimiter } from '../middleware/rateLimit.js';
 import { login, register, me, logout, requestPasswordReset, resetPassword } from '../controllers/authController.js';
+
+import authRequired from '../middleware/auth.js';
+
 import { authRequired } from '../middleware/auth.js';
 
 import { testSMTPConnection } from '../utils/email.js';
 import User from '../models/User.js';
 import crypto from 'crypto';
+
 
 // Multer setup for avatar upload
 import multer from 'multer';

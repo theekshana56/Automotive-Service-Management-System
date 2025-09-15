@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authRequired } from '../middleware/auth.js';
+import authRequired from '../middleware/auth.js';
 import { allowRoles } from '../middleware/rbac.js';
 import { 
   createBooking, 

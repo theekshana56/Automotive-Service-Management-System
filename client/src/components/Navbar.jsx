@@ -2,9 +2,9 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../store/auth';
 import React, { useState } from 'react';
 
-const BACKEND_URL = "http://localhost:5000";
-const LOGO_URL = `${BACKEND_URL}/assets/WhatsApp%20Image%202025-08-23%20at%2008.36.41_4ac10a51.jpg`;
-const LOCAL_LOGO_URL = '/logo.svg';
+const BACKEND_URL = "";
+const LOGO_URL = `/assets/logo.svg`;
+const LOCAL_LOGO_URL = 'logo.svg';
 
 export default function Navbar(){
   const { user, logout } = useAuth();
@@ -52,12 +52,21 @@ export default function Navbar(){
               {(user.role === 'manager' || user.role === 'admin' || user.role === 'advisor') && <Link to="/bookings-management" className="btn-ghost">Bookings</Link>}
               {user.role === 'admin' && <Link to="/admin-dashboard" className="btn-ghost">Admin Dashboard</Link>}
               {user.role === 'finance_manager' && <Link to="/finance-dashboard" className="btn-ghost">Finance Dashboard</Link>}
-              {user.role === 'inventory_manager' && <Link to="/inventory-dashboard" className="btn-ghost">Inventory Dashboard</Link>}
+              {user.role === 'inventory_manager' && (
+                <>
+                  <Link to="/inventory-dashboard" className="btn-ghost">Inventory</Link>
+                  <Link to="/parts" className="btn-ghost">Parts</Link>
+                  <Link to="/suppliers" className="btn-ghost">Suppliers</Link>
+                  <Link to="/purchase-orders" className="btn-ghost">POs</Link>
+                  <Link to="/low-stock" className="btn-ghost">Low Stock</Link>
+                  <Link to="/inventory/audit" className="btn-ghost">Inv Audit</Link>
+                </>
+              )}
               {user.role === 'staff_manager' && <Link to="/staff-dashboard" className="btn-ghost">Staff Dashboard</Link>}
               {(user.role === 'manager' || user.role === 'admin') && <Link to="/audit-logs" className="btn-ghost">Audit</Link>}
               <div className="flex items-center gap-3 px-3 py-1 rounded-xl bg-glass border border-white/10 backdrop-blur-md shadow-inner">
                 <img
-                  src={user.avatarUrl ? `${BACKEND_URL}${user.avatarUrl}` : 'https://via.placeholder.com/40?text=U'}
+                  src={user.avatarUrl ? `${user.avatarUrl}` : 'logo.svg'}
                   alt="avatar"
                   className="w-9 h-9 rounded-full object-cover border-2 border-primary shadow"
                 />

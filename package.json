@@ -1,0 +1,13 @@
+{
+  "name": "auto-elite-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm --prefix client run dev\" \"npm --prefix server run dev\"",
+    "start": "npm --prefix server start",
+    "build-client": "npm --prefix client run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}

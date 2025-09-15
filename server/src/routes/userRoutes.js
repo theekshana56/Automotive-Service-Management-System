@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { authRequired } from '../middleware/auth.js';
+import authRequired from '../middleware/auth.js';
 import { allowRoles } from '../middleware/rbac.js';
 import { 
   updateProfile, 

@@ -3,7 +3,7 @@ import api from '../api/client';
 import React from 'react';
 import Swal from 'sweetalert2';
 
-const BACKEND_URL = "http://localhost:5000";
+const BACKEND_URL = "";
 
 export default function ManageUsers(){
   const [users,setUsers]=useState([]);
@@ -56,7 +56,7 @@ export default function ManageUsers(){
                 <td className="p-3">
                   <div className="flex items-center gap-3">
                     <img 
-                      src={`${BACKEND_URL}/assets/WhatsApp%20Image%202025-08-23%20at%2008.36.41_4ac10a51.jpg`} 
+                      src={`/assets/WhatsApp%20Image%202025-08-23%20at%2008.36.41_4ac10a51.jpg`} 
                       alt="User Avatar" 
                       className="w-8 h-8 rounded-full"
                     />
