@@ -12,10 +12,11 @@ export default function Profile(){
   const [phone, setPhone] = useState(user?.phone || '');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [requestingDiscount, setRequestingDiscount] = useState(false);
-  const [discountMessage, setDiscountMessage] = useState('');
 
-  useEffect(()=>{ setName(user?.name||''); setPhone(user?.phone||''); }, [user]);
+  useEffect(()=>{
+    setName(user?.name||'');
+    setPhone(user?.phone||'');
+  }, [user]);
 
   const save = async (e) => {
     e.preventDefault();
@@ -35,22 +36,6 @@ export default function Profile(){
       const { data } = await api.post('/users/me/avatar', form, { headers: { 'Content-Type': 'multipart/form-data' }});
       setUser(data.user);
     } finally { setUploading(false); }
-  };
-
-  const requestLoyaltyDiscount = async () => {
-    setRequestingDiscount(true);
-    setDiscountMessage('');
-    try {
-      const { data } = await api.post('/users/loyalty-discount-request');
-      setDiscountMessage(data.message);
-      // Refresh user data to update loyalty status
-  const userResponse = await api.get('/api/auth/me');
-      setUser(userResponse.data.user);
-    } catch (error) {
-      setDiscountMessage(error.response?.data?.message || 'Failed to request discount');
-    } finally {
-      setRequestingDiscount(false);
-    }
   };
 
   return (
@@ -73,38 +58,6 @@ export default function Profile(){
           {uploading ? 'Uploading...' : 'Change Photo'}
           <input type="file" accept="image/*" onChange={onFile} hidden />
         </label>
-      </div>
-      {/* Loyalty Status Section */}
-      <div className="mb-8 glass-panel p-6">
-        <h2 className="text-lg font-semibold mb-4">Loyalty Status</h2>
-        <div className="space-y-2 text-base">
-          <p><strong>Total Bookings:</strong> {user?.bookingCount || 0}</p>
-          <p><strong>Loyalty Eligible:</strong> {user?.isLoyaltyEligible ? '\u2705 Yes' : '\u274c No'}</p>
-          {user?.isLoyaltyEligible && (
-            <p><strong>Discount Requested:</strong> {user?.loyaltyDiscountRequested ? '\u2705 Yes' : '\u274c No'}</p>
-          )}
-          {user?.loyaltyDiscountRequested && (
-            <p><strong>Request Date:</strong> {new Date(user.loyaltyDiscountRequestDate).toLocaleDateString()}</p>
-          )}
-          {user?.loyaltyDiscountApproved !== undefined && (
-            <p><strong>Approved:</strong> {user?.loyaltyDiscountApproved ? '\u2705 Yes' : '\u274c No'}</p>
-          )}
-        </div>
-        {user?.isLoyaltyEligible && !user?.loyaltyDiscountRequested && (
-          <button 
-            onClick={requestLoyaltyDiscount}
-            disabled={requestingDiscount}
-            className="btn bg-gradient-to-r from-primary to-accent2 text-slate-900 shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-2xl hover:from-accent2 hover:to-primary mt-6 w-full"
-          >
-            {requestingDiscount ? 'Sending Request...' : 'Request Loyalty Discount'}
-          </button>
-        )}
-        
-        {discountMessage && (
-          <p className={`mt-2 text-sm ${discountMessage.includes('sent') ? 'text-green-600' : 'text-red-600'}`}>
-            {discountMessage}
-          </p>
-        )}
       </div>
 
       <form onSubmit={save}>

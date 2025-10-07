@@ -5,12 +5,13 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, unique: true, required: true, lowercase: true },
   password: { type: String, required: true, select: false },
-  role: { 
-    type: String, 
-    enum: ['user', 'advisor', 'manager', 'admin', 'finance_manager', 'inventory_manager', 'staff_manager'], 
-    default: 'user' 
+  role: {
+    type: String,
+    enum: ['user', 'advisor', 'manager', 'admin', 'finance_manager', 'inventory_manager', 'staff_member', 'staff_manager', 'hr_manager', 'mechanic'],
+    default: 'user'
   },
   phone: String,
+  address: String,
   avatarUrl: String, // served from /uploads/...
   resetOTP: { code: String, expiresAt: Date },
   bookingCount: { type: Number, default: 0 }, // Track total bookings

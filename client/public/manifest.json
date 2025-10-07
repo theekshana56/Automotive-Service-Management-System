@@ -1,0 +1,17 @@
+{
+  "name": "Auto Elite - Automotive Service Management System",
+  "short_name": "AutoElite",
+  "description": "Professional automotive service management system",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

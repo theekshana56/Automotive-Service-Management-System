@@ -15,10 +15,8 @@ export default function Login(){
     e.preventDefault();
     setErr('');
     try{
-  const response = await api.post('/api/auth/login', form);
-      login(response.data.user); // Backend sets cookies, so we don't need to store token manually
-      
-      // Redirect based on user role
+      const response = await api.post('/api/auth/login', form);
+      login(response.data.user);
       const role = response.data.user.role;
       if (role === 'inventory_manager') {
         nav('/inventory-dashboard');
@@ -28,14 +26,20 @@ export default function Login(){
         nav('/finance-dashboard');
       } else if (role === 'staff_manager') {
         nav('/staff-dashboard');
+      } else if (role === 'hr_manager') {
+        nav('/hr');
       } else if (role === 'manager') {
         nav('/advisor-management');
       } else if (role === 'advisor') {
-        nav('/bookings-management');
+        nav('/advisor-dashboard');
+        } else if (role === 'mechanic') {
+        nav('/mechanic/dashboard');
       } else {
-        nav('/');
+        nav('/book');
       }
-    }catch(e){ setErr(e.response?.data?.message || 'Error'); }
+    } catch(e) {
+      setErr(e.response?.data?.message || 'Error');
+    }
   };
 
   return (

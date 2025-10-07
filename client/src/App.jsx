@@ -1,37 +1,25 @@
 import { Suspense, lazy, Component } from "react";
 import { HashRouter, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
+import NotificationBanner from "./components/NotificationBanner";
 
-import Dashboard from "./pages/Dashboard";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-
-import ForgotPassword from "./pages/ForgotPassword";
-import VerifyOTP from "./pages/VerifyOTP";
-import ResetPassword from "./pages/ResetPassword";
-
-import BookAppointment from "./pages/BookAppointment";
-import MyBookings from "./pages/MyBookings";
-import ManageUsers from "./pages/ManageUsers";
-import AuditLogs from "./pages/AuditLogs";
-import Profile from "./pages/Profile";
-import AvailableSlots from "./pages/AvailableSlots";
-import TestPage from "./pages/TestPage";
-import AdvisorManagement from "./pages/AdvisorManagement";
-import AdminDashboard from "./pages/AdminDashboard";
-import FinanceManagerDashboard from "./pages/FinanceManagerDashboard";
-import InventoryManagerDashboard from "./pages/InventoryManagerDashboard";
-import StaffManagerDashboard from "./pages/StaffManagerDashboard";
-import BookingsManagement from "./pages/BookingsManagement";
-import ProtectedRoute from "./components/ProtectedRoute";
+// import ProtectedRoute from "./components/ProtectedRoute";
 
 import RoleGuard from "./components/RoleGuard";
 import { AuthProvider } from "./store/auth.jsx";
 
+import Services from "./pages/Services";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+
 // Lazy-loaded pages to reduce initial bundle size
+const Home = lazy(() => import("./pages/Home"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const VerifyOTP = lazy(() => import("./pages/VerifyOTP"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const BookAppointment = lazy(() => import("./pages/BookAppointment"));
 const MyBookings = lazy(() => import("./pages/MyBookings"));
 const ManageUsers = lazy(() => import("./pages/ManageUsers"));
@@ -41,10 +29,22 @@ const AvailableSlots = lazy(() => import("./pages/AvailableSlots"));
 const TestPage = lazy(() => import("./pages/TestPage"));
 const AdvisorManagement = lazy(() => import("./pages/AdvisorManagement"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
-const FinanceManagerDashboard = lazy(() => import("./pages/FinanceManagerDashboard"));
+const FinanceManagerDashboard = lazy(() => import("./pages/finance/FinanceDashboard"));
 const InventoryManagerDashboard = lazy(() => import("./pages/InventoryManagerDashboard"));
 const StaffManagerDashboard = lazy(() => import("./pages/StaffManagerDashboard"));
+const HRManagerDashboard = lazy(() => import("./pages/HRManager/HRManagerDashboard"));
 const BookingsManagement = lazy(() => import("./pages/BookingsManagement"));
+
+// Finance pages
+const FinanceDashboard = lazy(() => import("./pages/finance/FinanceDashboard"));
+const StaffSalaryManagement = lazy(() => import("./pages/finance/StaffSalaryManagement"));
+const ServiceCostManagement = lazy(() => import("./pages/finance/ServiceCostManagement"));
+const CustomerPaymentManagement = lazy(() => import("./pages/finance/CustomerPaymentManagement"));
+
+const EmailManagement = lazy(() => import("./pages/finance/EmailManagement"));
+const InventoryPaymentManagement = lazy(() => import("./pages/finance/InventoryPaymentManagement"));
+const ProfitLoss = lazy(() => import("./pages/finance/ProfitLoss"));
+const FinalAmount = lazy(() => import("./pages/finance/FinalAmount"));
 
 // Inventory pages
 const PartsPage = lazy(() => import("./pages/inventory/PartsPage"));
@@ -55,6 +55,20 @@ const LowStockPage = lazy(() => import("./pages/inventory/LowStockPage"));
 const InventoryAuditLogsPage = lazy(() => import("./pages/inventory/AuditLogsPage"));
 const PartFormPage = lazy(() => import("./pages/inventory/PartFormPage"));
 const SupplierFormPage = lazy(() => import("./pages/inventory/SupplierFormPage"));
+const InventoryDashboard = lazy(() => import("./pages/inventory/InventoryDashboard"));
+const StockSummaryReport = lazy(() => import("./pages/inventory/StockSummaryReport"));
+const SupplierSpendReport = lazy(() => import("./pages/inventory/SupplierSpendReport"));
+const PartUsageLogReport = lazy(() => import("./pages/inventory/PartUsageLogReport"));
+const SupplierPerformanceAnalytics = lazy(() => import("./pages/inventory/SupplierPerformanceAnalytics"));
+const AdvisorDashboard = lazy(() => import("./pages/advisor/AdvisorDashboard"));
+const AdvisorInspections = lazy(() => import("./pages/advisor/Inspections"));
+const AdvisorAssign = lazy(() => import("./pages/advisor/AssignJobs"));
+const AdvisorEstimate = lazy(() => import("./pages/advisor/Estimate"));
+const AdvisorHistory = lazy(() => import("./pages/advisor/History"));
+const FindMechanic = lazy(() => import("./pages/FindMechanic"));
+const MechanicSignup = lazy(() => import("./pages/MechanicSignup"));
+const MechanicDashboard = lazy(() => import("./pages/mechanic/MechanicDashboard"));
+const WaitingRoom = lazy(() => import("./pages/WaitingRoom"));
 
 // Centralized role constants to avoid string drift
 const ROLES = {
@@ -62,9 +76,11 @@ const ROLES = {
   MANAGER: "manager",
   ADMIN: "admin",
   ADVISOR: "advisor",
+  MECHANIC: "mechanic",
   FINANCE_MANAGER: "finance_manager",
   INVENTORY_MANAGER: "inventory_manager",
   STAFF_MANAGER: "staff_manager",
+  HR_MANAGER: "hr_manager",
 };
 
 // Simple error boundary to prevent the whole app from crashing on render errors
@@ -93,19 +109,25 @@ class ErrorBoundary extends Component {
   }
 }
 
-export default function App() {
+function AppContent() {
   return (
-    <AuthProvider>
-      <HashRouter>
-        <Navbar />
- Mayadunna
-        <div className="w-full min-h-screen bg-app flex flex-col">
-          <ErrorBoundary>
-            <Suspense fallback={<div>Loading...</div>}>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
+    <HashRouter>
+      <Navbar />
+      <NotificationBanner />
+      <div className="w-full min-h-screen bg-app flex flex-col">
+        <ErrorBoundary>
+          <Suspense fallback={<div>Loading...</div>}>
+            <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/services" element={<Services />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/verify-otp" element={<VerifyOTP />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
 
                 <Route
                   path="/book"
@@ -132,6 +154,10 @@ export default function App() {
                   element={<RoleGuard roles={[ROLES.USER]}><Profile /></RoleGuard>}
                 />
                 <Route path="/test" element={<TestPage />} />
+                <Route path="/find-mechanic" element={<FindMechanic />} />
+                <Route path="/mechanic/signup" element={<MechanicSignup />} />
+                <Route path="/mechanic/dashboard" element={<RoleGuard roles={[ROLES.MECHANIC]}><MechanicDashboard /></RoleGuard>} />
+                <Route path="/waiting/:requestId" element={<WaitingRoom />} />
                 <Route
                   path="/advisor-management"
                   element={<RoleGuard roles={[ROLES.MANAGER, ROLES.ADMIN]}><AdvisorManagement /></RoleGuard>}
@@ -148,13 +174,80 @@ export default function App() {
                   path="/finance-dashboard"
                   element={<RoleGuard roles={[ROLES.FINANCE_MANAGER, ROLES.ADMIN]}><FinanceManagerDashboard /></RoleGuard>}
                 />
+                
+                {/* Finance Management Routes */}
+                <Route
+                  path="/finance"
+                  element={<RoleGuard roles={[ROLES.FINANCE_MANAGER, ROLES.ADMIN]}><FinanceDashboard /></RoleGuard>}
+                />
+                <Route
+                  path="/finance/salaries"
+                  element={<RoleGuard roles={[ROLES.FINANCE_MANAGER, ROLES.ADMIN]}><StaffSalaryManagement /></RoleGuard>}
+                />
+                <Route
+                  path="/finance/service-costs"
+                  element={<RoleGuard roles={[ROLES.FINANCE_MANAGER, ROLES.ADMIN]}><ServiceCostManagement /></RoleGuard>}
+                />
+                <Route
+                  path="/finance/customer-payments"
+                  element={<RoleGuard roles={[ROLES.FINANCE_MANAGER, ROLES.ADMIN]}><CustomerPaymentManagement /></RoleGuard>}
+                />
+
+                <Route
+                  path="/finance/email"
+                  element={<RoleGuard roles={[ROLES.FINANCE_MANAGER, ROLES.ADMIN]}><EmailManagement /></RoleGuard>}
+                />
+                <Route
+                  path="/finance/inventory-payments"
+                  element={<RoleGuard roles={[ROLES.FINANCE_MANAGER, ROLES.ADMIN]}><InventoryPaymentManagement /></RoleGuard>}
+                />
+                <Route
+                  path="/finance/profit-loss"
+                  element={<RoleGuard roles={[ROLES.FINANCE_MANAGER, ROLES.ADMIN]}><ProfitLoss /></RoleGuard>}
+                />
+                <Route
+                  path="/finance/final-amount"
+                  element={<RoleGuard roles={[ROLES.FINANCE_MANAGER, ROLES.ADMIN]}><FinalAmount /></RoleGuard>}
+                />
                 <Route
                   path="/inventory-dashboard"
-                  element={<RoleGuard roles={[ROLES.INVENTORY_MANAGER, ROLES.ADMIN]}><InventoryManagerDashboard /></RoleGuard>}
+                  element={<RoleGuard roles={[ROLES.INVENTORY_MANAGER, ROLES.ADMIN]}><InventoryDashboard /></RoleGuard>}
+                />
+                <Route
+                  path="/reports/stock-summary"
+                  element={<RoleGuard roles={[ROLES.INVENTORY_MANAGER, ROLES.MANAGER, ROLES.ADMIN]}><StockSummaryReport /></RoleGuard>}
+                />
+                <Route
+                  path="/reports/supplier-spend"
+                  element={<RoleGuard roles={[ROLES.INVENTORY_MANAGER, ROLES.MANAGER, ROLES.ADMIN]}><SupplierSpendReport /></RoleGuard>}
+                />
+                <Route
+                  path="/hr"
+                  element={<RoleGuard roles={[ROLES.HR_MANAGER, ROLES.ADMIN]}><HRManagerDashboard /></RoleGuard>}
                 />
                 <Route
                   path="/staff-dashboard"
                   element={<RoleGuard roles={[ROLES.STAFF_MANAGER, ROLES.ADMIN]}><StaffManagerDashboard /></RoleGuard>}
+                />
+                <Route
+                  path="/advisor-dashboard"
+                  element={<RoleGuard roles={[ROLES.ADVISOR, ROLES.MANAGER, ROLES.ADMIN]}><AdvisorDashboard /></RoleGuard>}
+                />
+                <Route
+                  path="/advisor/inspections"
+                  element={<RoleGuard roles={[ROLES.ADVISOR, ROLES.MANAGER, ROLES.ADMIN]}><AdvisorInspections /></RoleGuard>}
+                />
+                <Route
+                  path="/advisor/assign"
+                  element={<RoleGuard roles={[ROLES.ADVISOR, ROLES.MANAGER, ROLES.ADMIN]}><AdvisorAssign /></RoleGuard>}
+                />
+                <Route
+                  path="/advisor/estimate"
+                  element={<RoleGuard roles={[ROLES.ADVISOR, ROLES.MANAGER, ROLES.ADMIN]}><AdvisorEstimate /></RoleGuard>}
+                />
+                <Route
+                  path="/advisor/history"
+                  element={<RoleGuard roles={[ROLES.ADVISOR, ROLES.MANAGER, ROLES.ADMIN]}><AdvisorHistory /></RoleGuard>}
                 />
 
                 {/* Inventory routes */}
@@ -202,38 +295,29 @@ export default function App() {
                   path="/inventory/audit"
                   element={<RoleGuard roles={[ROLES.INVENTORY_MANAGER, ROLES.MANAGER, ROLES.ADMIN]}><InventoryAuditLogsPage /></RoleGuard>}
                 />
+                <Route
+                  path="/inventory/parts-usage-log-report"
+                  element={<RoleGuard roles={[ROLES.INVENTORY_MANAGER, ROLES.MANAGER, ROLES.ADMIN]}><PartUsageLogReport /></RoleGuard>}
+                />
+                <Route
+                  path="/inventory/supplier-performance"
+                  element={<RoleGuard roles={[ROLES.INVENTORY_MANAGER, ROLES.MANAGER, ROLES.ADMIN]}><SupplierPerformanceAnalytics /></RoleGuard>}
+                />
 
                 {/* Fallback 404 route */}
                 <Route path="*" element={<div>Not Found</div>} />
               </Routes>
             </Suspense>
           </ErrorBoundary>
-        <div className="max-w-5xl mx-auto p-4">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/verify-otp" element={<VerifyOTP />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-
-            <Route path="/book" element={<RoleGuard roles={["user"]}><BookAppointment /></RoleGuard>} />
-            <Route path="/bookings" element={<RoleGuard roles={["user"]}><MyBookings /></RoleGuard>} />
-            <Route path="/available-slots" element={<RoleGuard roles={["user"]}><AvailableSlots /></RoleGuard>} />
-            <Route path="/manage-users" element={<RoleGuard roles={["manager", "admin"]}><ManageUsers /></RoleGuard>} />
-            <Route path="/audit-logs" element={<RoleGuard roles={["manager", "admin"]}><AuditLogs /></RoleGuard>} />
-            <Route path="/profile" element={<RoleGuard roles={["user"]}><Profile /></RoleGuard>} />
-            <Route path="/test" element={<TestPage />} />
-            <Route path="/advisor-management" element={<RoleGuard roles={["manager", "admin"]}><AdvisorManagement /></RoleGuard>} />
-            <Route path="/bookings-management" element={<RoleGuard roles={["manager", "admin", "advisor"]}><BookingsManagement /></RoleGuard>} />
-            <Route path="/admin-dashboard" element={<RoleGuard roles={["admin"]}><AdminDashboard /></RoleGuard>} />
-            <Route path="/finance-dashboard" element={<RoleGuard roles={["finance_manager", "admin"]}><FinanceManagerDashboard /></RoleGuard>} />
-            <Route path="/inventory-dashboard" element={<RoleGuard roles={["inventory_manager", "admin"]}><InventoryManagerDashboard /></RoleGuard>} />
-            <Route path="/staff-dashboard" element={<RoleGuard roles={["staff_manager", "admin"]}><StaffManagerDashboard /></RoleGuard>} />
-          </Routes>
         </div>
       </HashRouter>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
     </AuthProvider>
   );
 }

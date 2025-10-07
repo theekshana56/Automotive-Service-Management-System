@@ -1,6 +1,8 @@
+import cron from 'node-cron';
+import Part from '../models/Part';
 // server/jobs/stockChecker.js
-const cron = require("node-cron");
-const Part = require("../models/Part");
+
+
 const { checkPartForLowStock } = require("../services/stockService");
 
 /**
@@ -90,7 +92,7 @@ async function triggerManualCheck() {
   }
 }
 
-module.exports = { 
+export default { 
   startStockChecker,
   triggerManualCheck 
 };

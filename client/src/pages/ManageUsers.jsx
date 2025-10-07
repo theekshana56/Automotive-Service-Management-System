@@ -56,9 +56,13 @@ export default function ManageUsers(){
                 <td className="p-3">
                   <div className="flex items-center gap-3">
                     <img 
-                      src={`/assets/WhatsApp%20Image%202025-08-23%20at%2008.36.41_4ac10a51.jpg`} 
+                      src={user.avatarUrl || '/assets/logo.svg'} 
                       alt="User Avatar" 
-                      className="w-8 h-8 rounded-full"
+                      className="w-8 h-8 rounded-full object-cover"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = '/assets/logo.svg';
+                      }}
                     />
                     <span className="font-medium">{user.name}</span>
                   </div>

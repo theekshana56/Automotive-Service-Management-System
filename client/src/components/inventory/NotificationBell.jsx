@@ -129,8 +129,8 @@ export default function NotificationBell() {
               <p className="text-slate-400">No notifications</p>
             </div>
           ) : (
-            notifications.map(notification => (
-              <div key={notification._id} className={`notification-item ${!notification.read ? 'notification-unread' : ''}`}>
+            notifications.map((notification, index) => (
+              <div key={notification._id || `notification-${index}`} className={`notification-item ${!notification.read ? 'notification-unread' : ''}`}>
                 <div className="flex items-start gap-3">
                   <span className={`text-lg ${getNotificationColor(notification.type)}`}>{getNotificationIcon(notification.type)}</span>
                   <div className="flex-1 min-w-0">

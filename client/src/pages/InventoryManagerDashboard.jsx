@@ -166,40 +166,6 @@ export default function InventoryManagerDashboard() {
               <button 
                 onClick={() => navigate('/parts')}
                 className="btn-ghost text-sm"
-
-      {/* Add Item Form */}
-      {showAddForm && (
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-          <h2 className="text-lg font-medium mb-4">Add New Inventory Item</h2>
-          <form onSubmit={handleAddItem} className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="label">Item Name</label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm({...form, name: e.target.value.replace(/[^a-zA-Z\s]/g, '')})}
-                className="input mt-1"
-                required
-              />
-            </div>
-            <div>
-              <label className="label">Part Number</label>
-              <input
-                type="text"
-                value={form.partNumber}
-                onChange={(e) => setForm({...form, partNumber: e.target.value})}
-                className="input mt-1"
-                required
-              />
-            </div>
-            <div>
-              <label className="label">Category</label>
-              <select
-                value={form.category}
-                onChange={(e) => setForm({...form, category: e.target.value})}
-                className="input mt-1"
-                required
-
               >
                 View All →
               </button>
@@ -345,8 +311,5 @@ export default function InventoryManagerDashboard() {
       </div>
     </div>
   );
-
-}
-
 }
 

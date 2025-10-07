@@ -37,7 +37,7 @@ AUTO ELITE - Service Booking Report
 ====================================
 
 Report Generated: ${new Date().toLocaleString()}
-Booking ID: ${report.bookingId}
+
 
 CUSTOMER INFORMATION:
 Name: ${report.customerName}

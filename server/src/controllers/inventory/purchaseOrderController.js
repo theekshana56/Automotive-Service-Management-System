@@ -96,8 +96,8 @@ const getPurchaseOrders = async (req, res) => {
     const skip = (page - 1) * limit;
     
     const purchaseOrders = await PurchaseOrder.find(filter)
-      .populate('supplier', 'name email phone')
-      .populate('items.part', 'name partNumber description')
+      .populate('supplier', 'companyName primaryContact.email primaryContact.phone')
+      .populate('items.part', 'name partCode description')
       .populate('createdBy', 'name email')
       .populate('submittedBy', 'name email')
       .populate('approvedBy', 'name email')
@@ -127,8 +127,8 @@ const getPurchaseOrders = async (req, res) => {
 const getPurchaseOrderById = async (req, res) => {
   try {
     const purchaseOrder = await PurchaseOrder.findById(req.params.id)
-      .populate('supplier', 'name email phone address')
-      .populate('items.part', 'name partNumber description currentStock minStock')
+      .populate('supplier', 'companyName primaryContact.email primaryContact.phone addresses')
+      .populate('items.part', 'name partCode description currentStock minStock')
       .populate('createdBy', 'name email')
       .populate('submittedBy', 'name email')
       .populate('approvedBy', 'name email');
@@ -458,7 +458,7 @@ const downloadPurchaseOrderPDF = async (req, res) => {
     const { id } = req.params;
     
     const purchaseOrder = await PurchaseOrder.findById(id)
-      .populate('supplier', 'name email phone address')
+      .populate('supplier', 'companyName primaryContact.email primaryContact.phone addresses')
       .populate('items.part', 'name partCode description')
       .populate('createdBy', 'name email');
 
@@ -501,7 +501,7 @@ const downloadAllPurchaseOrdersPDF = async (req, res) => {
     }
 
     const purchaseOrders = await PurchaseOrder.find(filter)
-      .populate('supplier', 'name email phone address')
+      .populate('supplier', 'companyName primaryContact.email primaryContact.phone addresses')
       .populate('items.part', 'name partCode description')
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1 });

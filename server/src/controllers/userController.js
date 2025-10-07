@@ -7,7 +7,7 @@ import AuditLog from '../models/AuditLog.js';
 import Booking from '../models/Booking.js';
 
 export async function updateProfile(req, res) {
-  const schema = Joi.object({ name: Joi.string().min(2), phone: Joi.string().allow('') });
+  const schema = Joi.object({ name: Joi.string().min(2), phone: Joi.string().allow(''), address: Joi.string().allow('') });
   const { value, error } = schema.validate(req.body);
   if (error) return res.status(400).json({ message: error.message });
   const user = await User.findByIdAndUpdate(req.user.id, value, { new: true });
@@ -328,14 +328,14 @@ export async function getStaff(req, res) {
   try {
     const { role } = req.query;
     let query = { 
-      role: { $in: ['advisor', 'finance_manager', 'inventory_manager', 'staff_manager'] } 
+      role: { $in: ['advisor', 'finance_manager', 'inventory_manager', 'staff_member', 'staff_manager'] } 
     };
     
     if (role && role !== 'all') {
       query.role = role;
     }
     
-    const staff = await User.find(query).select('-password');
+    const staff = await User.find(query).select('name email role department permissions phone address createdAt');
     res.json({ staff });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch staff', error: error.message });
@@ -348,7 +348,7 @@ export async function createStaff(req, res) {
       name: Joi.string().min(2).required(),
       email: Joi.string().email().required(),
       password: Joi.string().min(6).required(),
-      role: Joi.string().valid('advisor', 'finance_manager', 'inventory_manager', 'staff_manager').required(),
+      role: Joi.string().valid('advisor', 'finance_manager', 'inventory_manager', 'staff_member', 'staff_manager').required(),
       specializations: Joi.array().items(Joi.string()).default([]),
       isAvailable: Joi.boolean().default(true),
       maxConcurrentBookings: Joi.number().min(1).max(10).default(1),
@@ -399,7 +399,7 @@ export async function updateStaff(req, res) {
       name: Joi.string().min(2),
       email: Joi.string().email(),
       password: Joi.string().min(6).optional(),
-      role: Joi.string().valid('advisor', 'finance_manager', 'inventory_manager', 'staff_manager'),
+      role: Joi.string().valid('advisor', 'finance_manager', 'inventory_manager', 'staff_member', 'staff_manager'),
       specializations: Joi.array().items(Joi.string()),
       isAvailable: Joi.boolean(),
       maxConcurrentBookings: Joi.number().min(1).max(10),
@@ -411,7 +411,7 @@ export async function updateStaff(req, res) {
     if (error) return res.status(400).json({ message: error.message });
 
     const staff = await User.findById(id);
-    if (!staff || !['advisor', 'finance_manager', 'inventory_manager', 'staff_manager'].includes(staff.role)) {
+    if (!staff || !['advisor', 'finance_manager', 'inventory_manager', 'staff_member', 'staff_manager'].includes(staff.role)) {
       return res.status(404).json({ message: 'Staff member not found' });
     }
 
@@ -462,7 +462,7 @@ export async function deleteStaff(req, res) {
     const { id } = req.params;
     
     const staff = await User.findById(id);
-    if (!staff || !['advisor', 'finance_manager', 'inventory_manager', 'staff_manager'].includes(staff.role)) {
+    if (!staff || !['advisor', 'finance_manager', 'inventory_manager', 'staff_member', 'staff_manager'].includes(staff.role)) {
       return res.status(404).json({ message: 'Staff member not found' });
     }
 
@@ -481,6 +481,13 @@ export async function deleteStaff(req, res) {
     }
 
     await User.findByIdAndDelete(id);
+
+    try {
+      const StaffProfile = (await import('../models/staffMng/Staff.js')).default;
+      await StaffProfile.deleteOne({ email: staff.email });
+    } catch (error) {
+      console.warn('Failed to delete staffMng profile for', staff.email, error?.message || error);
+    }
 
     await AuditLog.create({ 
       actor: req.user.id, 
@@ -517,7 +524,7 @@ export async function updateStaffAvailability(req, res) {
     }
 
     const staff = await User.findById(id);
-    if (!staff || !['advisor', 'finance_manager', 'inventory_manager', 'staff_manager'].includes(staff.role)) {
+    if (!staff || !['advisor', 'finance_manager', 'inventory_manager', 'staff_member'].includes(staff.role)) {
       console.log('Staff not found or invalid role:', { id, staff: staff?.role });
       return res.status(404).json({ message: 'Staff member not found' });
     }

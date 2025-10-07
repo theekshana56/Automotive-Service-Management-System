@@ -1,5 +1,6 @@
+import mongoose from 'mongoose';
 // server/models/VehicleModel.js
-const mongoose = require('mongoose');
+
 
 const VehicleModelSchema = new mongoose.Schema({
   make: { type: String, required: true, trim: true },
@@ -9,4 +10,4 @@ const VehicleModelSchema = new mongoose.Schema({
   engineType: { type: String, trim: true },
 }, { timestamps: true });
 
-module.exports = mongoose.model('VehicleModel', VehicleModelSchema);
+export default mongoose.model('VehicleModel', VehicleModelSchema);

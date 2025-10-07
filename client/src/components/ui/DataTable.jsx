@@ -29,8 +29,8 @@ export default function DataTable({
   }
 
   return (
-    <div className={`table-responsive ${className}`}>
-      <table className="inventory-table">
+    <div className={`table-responsive overflow-x-auto ${className}`}>
+      <table className="inventory-table min-w-full">
         <thead>
           <tr>
             {columns.map((column, index) => (

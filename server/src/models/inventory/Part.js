@@ -35,6 +35,15 @@ const PartSchema = new mongoose.Schema(
     // Stock information as an embedded document
     stock: { type: StockSchema, default: () => ({}) },
 
+  // Cost information (purchase-related)
+  cost: {
+    lastPurchasePrice: { type: Number, default: 0, min: 0 },
+    currency: { type: String, default: "USD", trim: true },
+  },
+
+    // Selling price for this part (retail/unit price)
+    sellingPrice: { type: Number, default: 0, min: 0 },
+
     // Flags and system fields
     isActive: { type: Boolean, default: true },
 

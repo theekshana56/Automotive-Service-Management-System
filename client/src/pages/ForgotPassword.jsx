@@ -19,7 +19,7 @@ export default function ForgotPassword() {
     try {
       const requestData = { email: email.toLowerCase() };
       console.log('Sending request reset with:', requestData);
-      const response = await api.post('/auth/request-reset', requestData);
+      const response = await api.post('/api/auth/request-reset', requestData);
       console.log('Request reset response:', response.data);
       setMessage('OTP sent to your email. Redirecting to verification...');
       setTimeout(() => nav(`/verify-otp?email=${encodeURIComponent(email)}`), 2000);

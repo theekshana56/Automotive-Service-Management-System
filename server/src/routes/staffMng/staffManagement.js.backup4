@@ -1,0 +1,476 @@
+import express from 'express';
+import Staff from '../models/Staff.js';
+import bcrypt from 'bcryptjs';
+import fs from 'fs';
+import path from 'path';
+
+const router = express.Router();
+
+// Get all staff members
+router.get('/staff', async (req, res) => {
+  try {
+    const staff = await Staff.find({}, 'name email role jobs attendance extraWork salary suggestions');
+    res.json({ staff });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch staff members" });
+  }
+});
+
+// Get jobs for a specific staff member
+router.get('/staff-jobs/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const staff = await Staff.findOne({ email });
+    if (!staff) {
+      return res.status(404).json({ error: "Staff member not found" });
+    }
+    res.json({ jobs: staff.jobs });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch jobs" });
+  }
+});
+
+// Update job status
+router.put('/staff-jobs/:jobId', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const { status } = req.body;
+    
+    const staff = await Staff.findOne({ 'jobs._id': jobId });
+    if (!staff) {
+      return res.status(404).json({ error: "Job not found" });
+    }
+    
+    const job = staff.jobs.id(jobId);
+    if (!job) {
+      return res.status(404).json({ error: "Job not found" });
+    }
+    
+    job.status = status;
+    await staff.save();
+    
+    res.json({ 
+      message: "Job status updated successfully", 
+      job: job,
+      jobs: staff.jobs 
+    });
+  } catch (error) {
+    console.error('Error updating job status:', error);
+    res.status(500).json({ error: "Failed to update job status" });
+  }
+});
+
+// Update job status by index (fallback method)
+router.put('/staff-jobs/update-by-index', async (req, res) => {
+  try {
+    const { email, jobIndex, status } = req.body;
+    
+    const staff = await Staff.findOne({ email });
+    if (!staff) {
+      return res.status(404).json({ error: "Staff member not found" });
+    }
+    
+    if (jobIndex < 0 || jobIndex >= staff.jobs.length) {
+      return res.status(400).json({ error: "Invalid job index" });
+    }
+    
+    staff.jobs[jobIndex].status = status;
+    await staff.save();
+    
+    res.json({ 
+      message: "Job status updated successfully", 
+      job: staff.jobs[jobIndex],
+      jobs: staff.jobs 
+    });
+  } catch (error) {
+    console.error('Error updating job status by index:', error);
+    res.status(500).json({ error: "Failed to update job status" });
+  }
+});
+
+// Get attendance for a specific staff member
+router.get('/attendance/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const staff = await Staff.findOne({ email });
+    if (!staff) {
+      return res.status(404).json({ error: "Staff member not found" });
+    }
+    res.json({ attendance: staff.attendance });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch attendance" });
+  }
+});
+
+// Get extra work for a specific staff member
+router.get('/extrawork/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const staff = await Staff.findOne({ email });
+    if (!staff) {
+      return res.status(404).json({ error: "Staff member not found" });
+    }
+    res.json({ extraWork: staff.extraWork });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch extra work" });
+  }
+});
+
+// Get suggestions for a specific staff member
+router.get('/suggestions/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const staff = await Staff.findOne({ email });
+    if (!staff) {
+      return res.status(404).json({ error: "Staff member not found" });
+    }
+    res.json({ suggestions: staff.suggestions });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch suggestions" });
+  }
+});
+
+// Check-in by email
+router.post("/attendance/checkin", async (req, res) => {
+  try {
+    const { email, checkInTime } = req.body;
+    const staff = await Staff.findOne({ email });
+    if (!staff) {
+      return res.status(404).json({ error: "Staff member not found" });
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const currentTime = new Date().toISOString();
+    
+    // Check if there's already an attendance record for today
+    let todayRecord = staff.attendance.find(record => {
+      const recordDate = new Date(record.date).toISOString().split('T')[0];
+      return recordDate === today;
+    });
+    
+    if (todayRecord) {
+      // Update existing record
+      todayRecord.checkInTime = checkInTime || currentTime;
+      todayRecord.checkOutTime = null;
+      todayRecord.hoursWorked = 0;
+    } else {
+      // Create new record
+      staff.attendance.push({
+        date: today,
+        email: email,
+        checkInTime: checkInTime || currentTime,
+        checkOutTime: null,
+        hoursWorked: 0
+      });
+    }
+
+    await staff.save();
+    res.json({ message: "Checked in successfully", attendance: staff.attendance });
+  } catch (error) {
+    console.error('Check-in error:', error);
+    res.status(500).json({ error: "Failed to check in" });
+  }
+});
+
+// Check-out by email
+router.post("/attendance/checkout", async (req, res) => {
+  try {
+    const { email, checkOutTime: requestCheckOutTime, hoursWorked } = req.body;
+    const staff = await Staff.findOne({ email });
+    if (!staff) {
+      return res.status(404).json({ error: "Staff member not found" });
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const currentTime = new Date().toISOString();
+    
+    // Find today's attendance record with better date matching
+    const todayRecord = staff.attendance.find(record => {
+      const recordDate = new Date(record.date).toISOString().split('T')[0];
+      return recordDate === today;
+    });
+    
+    if (!todayRecord) {
+      return res.status(400).json({ error: "No check-in record found for today" });
+    }
+    
+    if (!todayRecord.checkInTime) {
+      return res.status(400).json({ error: "No check-in time found for today" });
+    }
+    
+    if (todayRecord.checkOutTime) {
+      return res.status(400).json({ error: "Already checked out for today" });
+    }
+    
+    // Set checkout time
+    todayRecord.checkOutTime = requestCheckOutTime || currentTime;
+    
+    // Calculate hours worked
+    const checkInTimeDate = new Date(todayRecord.checkInTime);
+    const checkOutTimeDate = new Date(todayRecord.checkOutTime);
+    const hoursWorkedCalculated = (checkOutTimeDate - checkInTimeDate) / (1000 * 60 * 60); // Convert to hours
+    
+    todayRecord.hoursWorked = hoursWorked || hoursWorkedCalculated;
+    
+    await staff.save();
+    res.json({ 
+      message: "Checked out successfully", 
+      attendance: staff.attendance,
+      hoursWorked: todayRecord.hoursWorked
+    });
+  } catch (error) {
+    console.error('Check-out error:', error);
+    res.status(500).json({ error: "Failed to check out" });
+  }
+});
+
+// Add extra work
+router.post("/extrawork", async (req, res) => {
+  try {
+    const { email, task, hours, date } = req.body;
+    const staff = await Staff.findOne({ email });
+    if (!staff) {
+      return res.status(404).json({ error: "Staff member not found" });
+    }
+
+    staff.extraWork.push({
+      task: task || 'Extra Work',
+      hours: parseFloat(hours),
+      date: date || new Date().toISOString().split('T')[0]
+    });
+
+    await staff.save();
+    res.json({ message: "Extra work added", extraWork: staff.extraWork });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to add extra work" });
+  }
+});
+
+// Add suggestion
+router.post("/suggestions", async (req, res) => {
+  try {
+    const { email, suggestion } = req.body;
+    const staff = await Staff.findOne({ email });
+    if (!staff) {
+      return res.status(404).json({ error: "Staff member not found" });
+    }
+
+    staff.suggestions.push(suggestion);
+    await staff.save();
+    res.json({ message: "Suggestion added", suggestions: staff.suggestions });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to add suggestion" });
+  }
+});
+
+// Update job status
+router.put("/jobs/update", async (req, res) => {
+  try {
+    const { email, jobIndex, status } = req.body;
+    const staff = await Staff.findOne({ email });
+    if (!staff) {
+      return res.status(404).json({ error: "Staff member not found" });
+    }
+
+    if (staff.jobs[jobIndex]) {
+      staff.jobs[jobIndex].status = status;
+      await staff.save();
+      res.json({ message: "Job status updated", jobs: staff.jobs });
+    } else {
+      res.status(404).json({ error: "Job not found" });
+    }
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update job status" });
+  }
+});
+
+// Sync job from Auto Elite system
+router.post("/sync-job", async (req, res) => {
+  try {
+    const { staffEmail, task, status, bookingId, vehiclePlate, jobType, notes } = req.body;
+    const staff = await Staff.findOne({ email: staffEmail });
+    if (!staff) {
+      return res.status(404).json({ error: "Staff member not found" });
+    }
+
+    staff.jobs.push({
+      task,
+      status: status || 'Pending',
+      bookingId,
+      vehiclePlate,
+      jobType,
+      notes,
+      assignedAt: new Date()
+    });
+
+    await staff.save();
+    res.json({ message: "Job synced successfully", jobs: staff.jobs });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to sync job" });
+  }
+});
+
+// Generate attendance report as CSV
+router.get('/attendance-report/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const staff = await Staff.findOne({ email });
+    
+    if (!staff) {
+      return res.status(404).json({ error: "Staff member not found" });
+    }
+
+    // Create CSV content
+    let csvContent = "Date,Check In,Check Out,Hours Worked,Status\n";
+    
+    staff.attendance.forEach(record => {
+      const date = new Date(record.date).toLocaleDateString();
+      const checkIn = record.checkIn ? new Date(record.checkIn).toLocaleTimeString() : 'N/A';
+      const checkOut = record.checkOut ? new Date(record.checkOut).toLocaleTimeString() : 'N/A';
+      const hoursWorked = record.hoursWorked || 0;
+      const status = record.checkIn && record.checkOut ? 'Completed' : record.checkIn ? 'In Progress' : 'Absent';
+      
+      csvContent += `${date},${checkIn},${checkOut},${hoursWorked},${status}\n`;
+    });
+
+    // Set headers for file download
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="attendance_report_${email}_${new Date().toISOString().split('T')[0]}.csv"`);
+    res.send(csvContent);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to generate attendance report" });
+  }
+});
+
+// Get salary information for a staff member
+router.get('/salary/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const staff = await Staff.findOne({ email }, 'name email salary attendance extraWork');
+    
+    if (!staff) {
+      return res.status(404).json({ error: "Staff member not found" });
+    }
+
+    // Calculate total hours worked this month
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    const monthlyAttendance = staff.attendance.filter(record => {
+      const recordDate = new Date(record.date);
+      return recordDate.getMonth() === currentMonth && recordDate.getFullYear() === currentYear;
+    });
+
+    const totalHours = monthlyAttendance.reduce((sum, record) => sum + (record.hoursWorked || 0), 0);
+    const extraHours = staff.extraWork.reduce((sum, work) => {
+      const workDate = new Date(work.date);
+      if (workDate.getMonth() === currentMonth && workDate.getFullYear() === currentYear) {
+        return sum + (work.hours || 0);
+      }
+      return sum;
+    }, 0);
+
+    const totalHoursWorked = totalHours + extraHours;
+    const baseSalary = staff.salary || 0;
+    const hourlyRate = baseSalary / 160; // Assuming 160 hours per month
+    const overtimeRate = hourlyRate * 1.5;
+    
+    const regularHours = Math.min(totalHours, 160);
+    const overtimeHours = Math.max(0, totalHours - 160);
+    const extraWorkPay = extraHours * overtimeRate;
+    
+    const regularPay = regularHours * hourlyRate;
+    const overtimePay = overtimeHours * overtimeRate;
+    const totalPay = regularPay + overtimePay + extraWorkPay;
+
+    res.json({
+      staff: {
+        name: staff.name,
+        email: staff.email,
+        baseSalary,
+        hourlyRate: parseFloat(hourlyRate.toFixed(2)),
+        overtimeRate: parseFloat(overtimeRate.toFixed(2))
+      },
+      currentMonth: {
+        totalHoursWorked: parseFloat(totalHoursWorked.toFixed(2)),
+        regularHours: parseFloat(regularHours.toFixed(2)),
+        overtimeHours: parseFloat(overtimeHours.toFixed(2)),
+        extraHours: parseFloat(extraHours.toFixed(2)),
+        regularPay: parseFloat(regularPay.toFixed(2)),
+        overtimePay: parseFloat(overtimePay.toFixed(2)),
+        extraWorkPay: parseFloat(extraWorkPay.toFixed(2)),
+        totalPay: parseFloat(totalPay.toFixed(2))
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch salary information" });
+  }
+});
+
+// Generate salary report as PDF/CSV
+router.get('/salary-report/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    const staff = await Staff.findOne({ email }, 'name email salary attendance extraWork');
+    
+    if (!staff) {
+      return res.status(404).json({ error: "Staff member not found" });
+    }
+
+    // Calculate salary details (same logic as above)
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    const monthlyAttendance = staff.attendance.filter(record => {
+      const recordDate = new Date(record.date);
+      return recordDate.getMonth() === currentMonth && recordDate.getFullYear() === currentYear;
+    });
+
+    const totalHours = monthlyAttendance.reduce((sum, record) => sum + (record.hoursWorked || 0), 0);
+    const extraHours = staff.extraWork.reduce((sum, work) => {
+      const workDate = new Date(work.date);
+      if (workDate.getMonth() === currentMonth && workDate.getFullYear() === currentYear) {
+        return sum + (work.hours || 0);
+      }
+      return sum;
+    }, 0);
+
+    const totalHoursWorked = totalHours + extraHours;
+    const baseSalary = staff.salary || 0;
+    const hourlyRate = baseSalary / 160;
+    const overtimeRate = hourlyRate * 1.5;
+    
+    const regularHours = Math.min(totalHours, 160);
+    const overtimeHours = Math.max(0, totalHours - 160);
+    const extraWorkPay = extraHours * overtimeRate;
+    
+    const regularPay = regularHours * hourlyRate;
+    const overtimePay = overtimeHours * overtimeRate;
+    const totalPay = regularPay + overtimePay + extraWorkPay;
+
+    // Create CSV content
+    const monthName = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    let csvContent = `Salary Report - ${monthName}\n`;
+    csvContent += `Employee: ${staff.name} (${staff.email})\n\n`;
+    csvContent += `Base Salary,${baseSalary}\n`;
+    csvContent += `Hourly Rate,${hourlyRate.toFixed(2)}\n`;
+    csvContent += `Overtime Rate,${overtimeRate.toFixed(2)}\n\n`;
+    csvContent += `Regular Hours,${regularHours.toFixed(2)}\n`;
+    csvContent += `Overtime Hours,${overtimeHours.toFixed(2)}\n`;
+    csvContent += `Extra Work Hours,${extraHours.toFixed(2)}\n`;
+    csvContent += `Total Hours,${totalHoursWorked.toFixed(2)}\n\n`;
+    csvContent += `Regular Pay,${regularPay.toFixed(2)}\n`;
+    csvContent += `Overtime Pay,${overtimePay.toFixed(2)}\n`;
+    csvContent += `Extra Work Pay,${extraWorkPay.toFixed(2)}\n`;
+    csvContent += `Total Pay,${totalPay.toFixed(2)}\n`;
+
+    // Set headers for file download
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="salary_report_${email}_${monthName.replace(' ', '_')}.csv"`);
+    res.send(csvContent);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to generate salary report" });
+  }
+});
+
+export default router;

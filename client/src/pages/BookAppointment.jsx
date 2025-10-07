@@ -20,6 +20,12 @@ function todayStr() {
   const d = new Date();
   return d.toISOString().slice(0, 10);
 }
+// Tomorrow's date
+function tomorrowStr() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
 //fixed date two weeks from today
 function twoWeeksFromTodayStr() {
   const d = new Date();
@@ -109,12 +115,12 @@ export default function BookAppointment(){
       setAvailableSlots([]);
       return; 
     }
-    api.get(`/bookings/booked-slots?date=${form.date}`)
+    api.get(`/api/bookings/booked-slots?date=${form.date}`)
       .then(res => setBookedSlots(res.data.slots))
       .catch(() => setBookedSlots([]));
     
     // Also fetch available slots for queue information
-    api.get(`/bookings/available-slots?date=${form.date}`)
+    api.get(`/api/bookings/available-slots?date=${form.date}`)
       .then(res => setAvailableSlots(res.data.availableSlots))
       .catch(() => setAvailableSlots([]));
   }, [form.date]);
@@ -181,7 +187,7 @@ export default function BookAppointment(){
 
     setSubmitting(true);
     try {
-      const { data } = await api.post('/bookings', form);
+      const { data } = await api.post('/api/bookings', form);
       setBookingSuccess(data.booking);
       setForm({
         serviceType:'General Service',
@@ -200,7 +206,7 @@ export default function BookAppointment(){
 
   const generateReport = async (bookingId) => {
     try {
-      const response = await api.get(`/bookings/${bookingId}/report`);
+      const response = await api.get(`/api/bookings/${bookingId}/report`);
       const report = response.data.report;
       
       // Create a formatted report text
@@ -291,7 +297,7 @@ End of Report
 
   const generatePDFReport = async (bookingId) => {
     try {
-      const response = await api.get(`/bookings/${bookingId}/report/pdf`, { 
+      const response = await api.get(`/api/bookings/${bookingId}/report/pdf`, { 
         responseType: 'blob' 
       });
       const blob = new Blob([response.data], { type: 'application/pdf' });
@@ -361,7 +367,7 @@ End of Report
           </select>
         </label>
         <label className="label">Date
-          <input type="date" className="input mt-1" value={form.date} onChange={e=>setForm({...form,date:e.target.value, timeSlot:''})} required min={todayStr()} max={twoWeeksFromTodayStr()} />
+          <input type="date" className="input mt-1" value={form.date} onChange={e=>setForm({...form,date:e.target.value, timeSlot:''})} required min={tomorrowStr()} max={twoWeeksFromTodayStr()} />
         </label>
         <label className="label">Time Slot
           <select className="input mt-1" value={form.timeSlot} onChange={e=>setForm({...form,timeSlot:e.target.value})} required disabled={!form.date}>

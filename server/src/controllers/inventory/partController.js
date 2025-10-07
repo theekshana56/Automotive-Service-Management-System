@@ -1,12 +1,80 @@
+import Part from '../../models/inventory/Part';
 // server/controllers/partController.js
 const { validationResult } = require("express-validator");
-const Part = require("../../models/inventory/Part");
+
 const { checkPartForLowStock } = require("../../services/inventory/stockService");
 const { logAudit } = require("../../utils/logAudit");
 
+// Search parts by name or part code
+export const searchParts = async (req, res) => {
+  try {
+    const { query } = req.query;
+    
+    if (!query) {
+      return res.status(400).json({ message: "Search query is required" });
+    }
+    
+    const parts = await Part.find({
+      $or: [
+        { name: { $regex: query, $options: 'i' } },
+        { partCode: { $regex: query, $options: 'i' } },
+        { description: { $regex: query, $options: 'i' } }
+      ],
+      isActive: true
+    }).limit(10);
+    
+    res.status(200).json(parts);
+  } catch (err) {
+    console.error("searchParts error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Reserve part quantity
+export const reservePart = async (req, res) => {
+  try {
+    const { quantity } = req.body;
+    
+    if (!quantity || quantity <= 0) {
+      return res.status(400).json({ message: "Valid quantity is required" });
+    }
+    
+    const part = await Part.findById(req.params.id);
+    
+    if (!part) {
+      return res.status(404).json({ message: "Part not found" });
+    }
+    
+    // Check if enough quantity is available
+    if ((part.stock.onHand || 0) - (part.stock.reserved || 0) < quantity) {
+      return res.status(400).json({ message: "Not enough quantity available" });
+    }
+    
+    // Update reserved quantity
+    part.stock.reserved = (part.stock.reserved || 0) + quantity;
+    await part.save();
+    
+    // Audit log for update
+    await logAudit({
+      userId: req.user?.id,
+      entityType: 'Part',
+      entityId: part._id,
+      action: 'update',
+      before: { stock: { reserved: part.stock.reserved - quantity } },
+      after: { stock: { reserved: part.stock.reserved } },
+      source: 'UI'
+    });
+    
+    res.status(200).json(part);
+  } catch (err) {
+    console.error("reservePart error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 const BARCODE_BASE = process.env.BARCODE_BASE || "https://barcodeapi.org/api/128";
 
-exports.createPart = async (req, res) => {
+export const createPart = async (req, res) => {
   try {
     // validate
     const errors = validationResult(req);
@@ -46,7 +114,7 @@ exports.createPart = async (req, res) => {
   }
 };
 
-exports.listParts = async (req, res) => {
+export const listParts = async (req, res) => {
   try {
     const {
       q,
@@ -86,7 +154,7 @@ exports.listParts = async (req, res) => {
   }
 };
 
-exports.getPart = async (req, res) => {
+export const getPart = async (req, res) => {
   try {
     const part = await Part.findById(req.params.id);
     if (!part) return res.status(404).json({ message: "Part not found" });
@@ -97,7 +165,7 @@ exports.getPart = async (req, res) => {
   }
 };
 
-exports.updatePart = async (req, res) => {
+export const updatePart = async (req, res) => {
   try {
     // validate
     const errors = validationResult(req);
@@ -150,7 +218,7 @@ exports.updatePart = async (req, res) => {
   }
 };
 
-exports.deactivatePart = async (req, res) => {
+export const deactivatePart = async (req, res) => {
   try {
     // Fetch old part for audit
     const oldPart = await Part.findById(req.params.id);
@@ -178,7 +246,7 @@ exports.deactivatePart = async (req, res) => {
 };
 
 // 🔎 Manual low-stock scan
-exports.checkStockNow = async (req, res) => {
+export const checkStockNow = async (req, res) => {
   try {
     const lowStockParts = await Part.find({
       isActive: true,

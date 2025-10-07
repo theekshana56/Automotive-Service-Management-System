@@ -7,16 +7,33 @@ import React, { useState, useEffect } from 'react';
     const { user, loading } = useAuth();
     const [selectedDate, setSelectedDate] = useState('');
     const [availableSlots, setAvailableSlots] = useState([]);
+    const [advisorCount, setAdvisorCount] = useState(0);
+    const [loadingAdvisors, setLoadingAdvisors] = useState(false);
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [selectedSlot, setSelectedSlot] = useState(null);
     const [queueInfo, setQueueInfo] = useState(null);
     const [loadingQueue, setLoadingQueue] = useState(false);
 
-    // Set today's date as default
+    // Set tomorrow's date as default (since today is blocked)
     useEffect(() => {
-      const today = new Date().toISOString().slice(0, 10);
-      setSelectedDate(today);
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      setSelectedDate(tomorrow.toISOString().slice(0, 10));
     }, []);
+
+ // Load advisor count on mount if user is authenticated
+    useEffect(() => {
+  if (user) {
+    loadAdvisorCount();
+  }
+}, [user]);
+
+    // Tomorrow's date
+    function tomorrowStr() {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      return d.toISOString().slice(0, 10);
+    }
 
     // fixed date two weeks from today
     function twoWeeksFromTodayStr() {
@@ -36,12 +53,28 @@ import React, { useState, useEffect } from 'react';
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedDate, user, loading]);
 
+        //advisor count load
+  const loadAdvisorCount = async () => {
+  setLoadingAdvisors(true);
+  try {
+    const response = await api.get('/api/users/advisors');
+    const advisors = response.data.advisors || [];
+    setAdvisorCount(advisors.length);
+  } catch (error) {
+    console.error('Failed to load advisor count:', error);
+    setAdvisorCount(0);
+  } finally {
+    setLoadingAdvisors(false);
+  }
+};
+
+
     const loadAvailableSlots = async () => {
       if (!user) return; // Don't load if not authenticated
 
       setLoadingSlots(true);
       try {
-        const { data } = await api.get(`/bookings/available-slots?date=${encodeURIComponent(selectedDate)}`);
+        const { data } = await api.get(`/api/bookings/available-slots?date=${encodeURIComponent(selectedDate)}`);
         const slots = Array.isArray(data?.availableSlots) ? data.availableSlots : [];
         setAvailableSlots(slots);
       } catch (error) {
@@ -59,7 +92,7 @@ import React, { useState, useEffect } from 'react';
       setQueueInfo(null); // clear stale data while loading
       try {
         const { data } = await api.get(
-          `/bookings/queue-info?date=${encodeURIComponent(selectedDate)}&timeSlot=${encodeURIComponent(timeSlot)}`
+          `/api/bookings/queue-info?date=${encodeURIComponent(selectedDate)}&timeSlot=${encodeURIComponent(timeSlot)}`
         );
         setQueueInfo(data || null);
       } catch (error) {
@@ -113,7 +146,7 @@ import React, { useState, useEffect } from 'react';
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              min={new Date().toISOString().slice(0, 10)}
+              min={tomorrowStr()}
               max={twoWeeksFromTodayStr()}
               className="input w-full pl-12 pr-4 py-2 rounded-xl bg-glass border border-white/10 shadow focus:border-primary/70 focus:ring-2 focus:ring-primary/30 transition-all duration-200 hover:border-primary/40 hover:shadow-lg"
             />
@@ -353,7 +386,7 @@ import React, { useState, useEffect } from 'react';
               </div>
               <div>
                 <span className="font-medium">Total Advisors:</span>
-                <span className="ml-2 text-blue-600">30</span>
+                <span className="ml-2 text-blue-600">{loadingAdvisors ? '...' : advisorCount}</span>
               </div>
             </div>
           </div>

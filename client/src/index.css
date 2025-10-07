@@ -4,9 +4,33 @@
 @tailwind utilities;
 
 /* Design tokens (keep in sync with tailwind.config.js) */
-:root{
+:root {
   --max-width: 1200px;
 
+  /* Tailwind HSL color tokens */
+  --background: 222 47% 10%;
+  --foreground: 222 20% 98%;
+  --card: 222 47% 12%;
+  --card-foreground: 222 20% 98%;
+  --popover: 222 47% 12%;
+  --popover-foreground: 222 20% 98%;
+  --primary: 200 100% 60%;
+  --primary-foreground: 222 20% 98%;
+  --primary-glow: 200 100% 70%;
+  --secondary: 222 20% 20%;
+  --secondary-foreground: 222 20% 98%;
+  --accent: 160 100% 60%;
+  --accent-foreground: 222 20% 98%;
+  --destructive: 0 100% 60%;
+  --destructive-foreground: 222 20% 98%;
+  --border: 222 20% 30%;
+  --input: 222 20% 20%;
+  --ring: 200 100% 60%;
+  --muted: 222 20% 30%;
+  --muted-foreground: 222 20% 70%;
+  --radius: 0.75rem;
+
+  /* Legacy and custom tokens */
   --color-bg: #0b1020;
   --color-surface: #10182a;
   --color-primary: #3fa7ff;

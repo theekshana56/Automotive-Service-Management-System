@@ -1,6 +1,7 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import Part from '../../models/inventory/Part.js';
+import PartUsageLog from '../../models/inventory/PartUsageLog.js';
 import { checkPartForLowStock } from '../../services/inventory/stockService.js';
 import { logAudit } from '../../utils/logAudit.js';
 import auth from '../../middleware/auth.js';
@@ -13,6 +14,7 @@ const createPartRules = [
   body("name").notEmpty().withMessage("name is required"),
   body("partCode").notEmpty().withMessage("partCode is required"),
   body("category").notEmpty().withMessage("category is required"),
+  body("sellingPrice").optional().isFloat({ min: 0 }).withMessage("sellingPrice must be a positive number"),
   body("stock.onHand").optional().isInt({ min: 0 }),
   body("stock.minLevel").optional().isInt({ min: 0 }),
   body("stock.maxLevel").optional().isInt({ min: 0 }),
@@ -23,6 +25,7 @@ const updatePartRules = [
   body("name").optional().notEmpty(),
   body("partCode").optional().notEmpty(),
   body("category").optional().notEmpty(),
+  body("sellingPrice").optional().isFloat({ min: 0 }).withMessage("sellingPrice must be a positive number"),
   body("stock.onHand").optional().isInt({ min: 0 }),
   body("stock.minLevel").optional().isInt({ min: 0 }),
   body("stock.maxLevel").optional().isInt({ min: 0 }),
@@ -70,12 +73,161 @@ router.post("/", auth, createPartRules, async (req, res) => {
     try {
       await checkPartForLowStock(part._id);
     } catch (lowStockErr) {
-      console.warn("⚠️ Low-stock check failed after part creation:", lowStockErr.message);
+      console.warn("⚠ Low-stock check failed after part creation:", lowStockErr.message);
     }
     
     res.status(201).json(part);
   } catch (err) {
     console.error("createPart error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Search parts by name or part code
+router.get("/search", auth, async (req, res) => {
+  try {
+    const { query } = req.query;
+    
+    if (!query) {
+      return res.status(400).json({ message: "Search query is required" });
+    }
+    
+    const parts = await Part.find({
+      $or: [
+        { name: { $regex: query, $options: 'i' } },
+        { partCode: { $regex: query, $options: 'i' } },
+        { description: { $regex: query, $options: 'i' } }
+      ],
+      isActive: true
+    }).limit(10);
+    
+    res.status(200).json({ items: parts });
+  } catch (err) {
+    console.error("searchParts error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Reserve part quantity (for estimates - doesn't consume actual stock)
+router.put("/:id/reserve", auth, async (req, res) => {
+  try {
+    const { quantity } = req.body;
+    
+    if (!quantity || quantity <= 0) {
+      return res.status(400).json({ message: "Valid quantity is required" });
+    }
+    
+    const part = await Part.findById(req.params.id);
+    
+    if (!part) {
+      return res.status(404).json({ message: "Part not found" });
+    }
+    
+    // Check if enough quantity is available
+    const available = (part.stock?.onHand || 0) - (part.stock?.reserved || 0);
+    if (available < quantity) {
+      return res.status(400).json({ 
+        message: `Not enough quantity available. Available: ${available}, Requested: ${quantity}` 
+      });
+    }
+    
+    // Only update reserved quantity (for estimates)
+    const oldReserved = part.stock?.reserved || 0;
+    part.stock = part.stock || {};
+    part.stock.reserved = oldReserved + quantity;
+    await part.save();
+    
+    // Audit log for update
+    await logAudit({
+      userId: req.user?.id,
+      entityType: 'Part',
+      entityId: part._id,
+      action: 'update',
+      before: { stock: { reserved: oldReserved } },
+      after: { stock: { reserved: part.stock.reserved } },
+      source: 'UI'
+    });
+    
+    res.status(200).json({ 
+      message: 'Part reserved for estimate',
+      part: {
+        _id: part._id,
+        name: part.name,
+        partCode: part.partCode,
+        stock: part.stock
+      }
+    });
+  } catch (err) {
+    console.error("reservePart error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Consume part quantity (for completed jobs - actually deducts from on-hand)
+router.put("/:id/consume", auth, async (req, res) => {
+  try {
+    const { quantity } = req.body;
+    console.log(`🔧 Consuming part ${req.params.id}, quantity: ${quantity}, user: ${req.user?.id}`);
+    
+    if (!quantity || quantity <= 0) {
+      return res.status(400).json({ message: "Valid quantity is required" });
+    }
+    
+    const part = await Part.findById(req.params.id);
+    
+    if (!part) {
+      return res.status(404).json({ message: "Part not found" });
+    }
+    
+    // Check if enough quantity is available
+    const onHand = part.stock?.onHand || 0;
+    if (onHand < quantity) {
+      return res.status(400).json({ 
+        message: `Not enough quantity available. On Hand: ${onHand}, Requested: ${quantity}` 
+      });
+    }
+    
+    // Deduct from on-hand quantity and reduce reserved quantity
+    const oldOnHand = part.stock?.onHand || 0;
+    const oldReserved = part.stock?.reserved || 0;
+    part.stock = part.stock || {};
+    part.stock.onHand = oldOnHand - quantity;
+    part.stock.reserved = Math.max(0, oldReserved - quantity); // Reduce reserved quantity
+    await part.save();
+    
+    // Create usage log entry
+    const usageLog = await PartUsageLog.create({
+      partId: part._id,
+      quantityUsed: quantity,
+      usedBy: req.user?.id,
+      jobId: req.body.jobId || null,
+      note: req.body.note || 'Consumed via Cost Estimation',
+      usedAt: new Date(),
+    });
+    console.log(`📝 Created usage log entry: ${usageLog._id} for part ${part.name}`);
+    
+    // Audit log for update
+    await logAudit({
+      userId: req.user?.id,
+      entityType: 'Part',
+      entityId: part._id,
+      action: 'update',
+      before: { stock: { onHand: oldOnHand, reserved: oldReserved } },
+      after: { stock: { onHand: part.stock.onHand, reserved: part.stock.reserved } },
+      source: 'UI'
+    });
+    
+    res.status(200).json({ 
+      message: 'Part consumed successfully',
+      part: {
+        _id: part._id,
+        name: part.name,
+        partCode: part.partCode,
+        stock: part.stock
+      }
+    });
+  } catch (err) {
+    console.error("consumePart error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -110,7 +262,7 @@ router.get("/low-stock", auth, async (req, res, next) => {
       }
     }
     
-    console.log(`⚠️ Found ${low.length} low-stock parts`);
+    console.log(`⚠ Found ${low.length} low-stock parts`);
     res.json({ total: low.length, items: low });
   } catch (e) {
     console.error("❌ Low-stock endpoint error:", e);
@@ -154,23 +306,63 @@ router.post("/check-stock", auth, async (req, res) => {
 // Main parts listing
 router.get("/", auth, async (req, res, next) => {
   try {
-    const { lowStock, q, page = 1, limit = 20, isActive } = req.query;
+    const { 
+      lowStock, 
+      page = 1, 
+      limit = 20, 
+      isActive, 
+      showAll, 
+      search, 
+      category, 
+      status 
+    } = req.query;
+    
     const filter = {};
-    if (typeof isActive === 'undefined') {
-      filter.isActive = true;
+    
+    // Handle active/inactive filter
+    if (showAll === 'true' || typeof isActive === 'undefined') {
+      // Show both active and inactive parts
+      // Don't set isActive filter
     } else {
       filter.isActive = String(isActive) === 'true';
     }
 
-    if (q) {
+    // Handle search filter
+    if (search) {
       filter.$or = [
-        { name: new RegExp(q, "i") },
-        { partCode: new RegExp(q, "i") },
-        { category: new RegExp(q, "i") },
+        { name: { $regex: search, $options: 'i' } },
+        { partCode: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { category: { $regex: search, $options: 'i' } }
       ];
     }
 
+    // Handle category filter
+    if (category) {
+      filter.category = { $regex: category, $options: 'i' };
+    }
+
     let parts = await Part.find(filter).sort({ name: 1 });
+
+    // Handle status filter (in-stock, low-stock, out-of-stock)
+    if (status) {
+      parts = parts.filter((p) => {
+        const stock = p.stock || {};
+        const onHand = stock.onHand || 0;
+        const reorderLevel = stock.reorderLevel || 0;
+        
+        switch (status) {
+          case 'in-stock':
+            return onHand > reorderLevel;
+          case 'low-stock':
+            return onHand <= reorderLevel && onHand > 0;
+          case 'out-of-stock':
+            return onHand === 0;
+          default:
+            return true;
+        }
+      });
+    }
 
     // if ?lowStock=1, filter those
     if (String(lowStock) === "1") {
@@ -190,13 +382,37 @@ router.get("/", auth, async (req, res, next) => {
 
     res.json({ 
       total: parts.length, 
-      items: paged,
+      parts: paged, // Changed from 'items' to 'parts' to match frontend expectation
       page: Number(page),
       pages: Math.ceil(parts.length / Number(limit)),
       lowStockCount
     });
   } catch (e) {
     next(e);
+  }
+});
+
+// Search parts by name or partCode
+router.get("/search", auth, async (req, res, next) => {
+  try {
+    const { query } = req.query;
+    if (!query) {
+      return res.status(400).json({ message: "Query parameter is required" });
+    }
+
+    const filter = {
+      $or: [
+        { name: new RegExp(query, "i") },
+        { partCode: new RegExp(query, "i") },
+      ],
+      isActive: true, // Only search for active parts
+    };
+
+    const parts = await Part.find(filter).select('name partCode sellingPrice stock category isActive _id').limit(10); // Limit results for search dropdown
+    res.json({ items: parts });
+  } catch (e) {
+    console.error("searchParts error:", e);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
@@ -254,7 +470,7 @@ router.put("/:id", auth, updatePartRules, async (req, res) => {
       try {
         await checkPartForLowStock(part._id);
       } catch (lowStockErr) {
-        console.warn("⚠️ Low-stock check failed after part update:", lowStockErr.message);
+        console.warn("⚠ Low-stock check failed after part update:", lowStockErr.message);
       }
     }
     

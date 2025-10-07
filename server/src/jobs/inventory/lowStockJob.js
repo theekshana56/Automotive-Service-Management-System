@@ -1,4 +1,5 @@
-const cron = require('node-cron');
+import cron from 'node-cron';
+
 const { scanAllPartsForLowStock } = require('../services/stockService');
 
 /**
@@ -55,7 +56,7 @@ async function triggerManualScan() {
   }
 }
 
-module.exports = { 
+export default { 
   scheduleLowStockScan,
   triggerManualScan 
 };

@@ -1,6 +1,18 @@
 import mongoose from 'mongoose';
 
-export const NOTIFICATION_TYPES = Object.freeze(['LOW_STOCK', 'PO_EVENT', 'SYSTEM']);
+export const NOTIFICATION_TYPES = Object.freeze([
+  'LOW_STOCK', 
+  'PO_EVENT', 
+  'SYSTEM',
+  'BOOKING_ASSIGNED',
+  'INSPECTION_STARTED',
+  'INSPECTION_COMPLETED',
+  'JOB_COMPLETED',
+  'JOB_CANCELLED',
+  'JOB_ON_HOLD',
+  'JOB_IN_PROGRESS',
+  'STATUS_UPDATED'
+]);
 
 const NotificationSchema = new mongoose.Schema(
   {

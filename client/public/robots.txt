@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+# Block access to API routes
+Disallow: /api/
+
+# Allow access to main application routes
+Allow: /
+Allow: /login
+Allow: /dashboard
+Allow: /staff
+Allow: /hr
+
+# Sitemap location
+Sitemap: /sitemap.xml

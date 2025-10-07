@@ -94,6 +94,13 @@ const purchaseOrderSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
+  rejectedAt: {
+    type: Date
+  },
+  rejectedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   
   // Notes and Comments
   notes: {
@@ -101,6 +108,14 @@ const purchaseOrderSchema = new mongoose.Schema({
     maxLength: 1000
   },
   internalNotes: {
+    type: String,
+    maxLength: 1000
+  },
+  approvalNotes: {
+    type: String,
+    maxLength: 1000
+  },
+  rejectionNotes: {
     type: String,
     maxLength: 1000
   },

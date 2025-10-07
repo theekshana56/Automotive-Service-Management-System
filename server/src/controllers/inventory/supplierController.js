@@ -1,8 +1,9 @@
+import Supplier from '../../models/inventory/Supplier';
 // server/controllers/supplierController.js
 const { validationResult } = require("express-validator");
-const Supplier = require("../../models/inventory/Supplier");
 
-exports.createSupplier = async (req, res) => {
+
+export const createSupplier = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
@@ -19,7 +20,7 @@ exports.createSupplier = async (req, res) => {
   }
 };
 
-exports.listSuppliers = async (req, res) => {
+export const listSuppliers = async (req, res) => {
   try {
     const { q, isActive, page = 1, limit = 10, sort = "-createdAt" } = req.query;
 
@@ -47,7 +48,7 @@ exports.listSuppliers = async (req, res) => {
   }
 };
 
-exports.getSupplier = async (req, res) => {
+export const getSupplier = async (req, res) => {
   try {
     const supplier = await Supplier.findById(req.params.id);
     if (!supplier) return res.status(404).json({ message: "Supplier not found" });
@@ -58,7 +59,7 @@ exports.getSupplier = async (req, res) => {
   }
 };
 
-exports.updateSupplier = async (req, res) => {
+export const updateSupplier = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
@@ -83,7 +84,7 @@ exports.updateSupplier = async (req, res) => {
   }
 };
 
-exports.deactivateSupplier = async (req, res) => {
+export const deactivateSupplier = async (req, res) => {
   try {
     const supplier = await Supplier.findByIdAndUpdate(
       req.params.id,

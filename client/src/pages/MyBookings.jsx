@@ -7,12 +7,12 @@ import Swal from 'sweetalert2';
 export default function MyBookings(){
   const { user } = useAuth();
   const [items,setItems] = useState([]);
-  const load = async ()=>{ const {data} = await api.get('/bookings/mine'); setItems(data.bookings); };
+  const load = async ()=>{ const {data} = await api.get('/api/bookings/mine'); setItems(data.bookings); };
   useEffect(()=>{ load(); }, []);
 
   const cancelBooking = async (bookingId) => {
     try {
-      await api.delete(`/bookings/${bookingId}`);
+      await api.delete(`/api/bookings/${bookingId}`);
       await load(); // Reload the list
     } catch (error) {
       Swal.fire({
@@ -28,7 +28,7 @@ export default function MyBookings(){
 
   const completeService = async (bookingId) => {
     try {
-      await api.post(`/bookings/${bookingId}/complete`);
+      await api.post(`/api/bookings/${bookingId}/complete`);
       await load(); // Reload the list
       Swal.fire({
         icon: 'success',
@@ -52,7 +52,7 @@ export default function MyBookings(){
 
   const freeSlot = async (bookingId) => {
     try {
-      await api.post(`/bookings/${bookingId}/free-slot`);
+      await api.post(`/api/bookings/${bookingId}/free-slot`);
       await load(); // Reload the list
       Swal.fire({
         icon: 'success',
@@ -76,7 +76,7 @@ export default function MyBookings(){
 
   const generateReport = async (bookingId) => {
     try {
-      const response = await api.get(`/bookings/${bookingId}/report`);
+      const response = await api.get(`/api/bookings/${bookingId}/report`);
       const report = response.data.report;
       
       // Create a formatted report text
@@ -168,7 +168,7 @@ End of Report
 
   const generatePDFReport = async (bookingId) => {
     try {
-      const response = await api.get(`/bookings/${bookingId}/report/pdf`, {
+      const response = await api.get(`/api/bookings/${bookingId}/report/pdf`, {
         responseType: 'blob' // Important for PDF download
       });
       

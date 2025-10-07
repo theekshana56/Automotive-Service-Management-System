@@ -9,6 +9,7 @@ const bookingSchema = new mongoose.Schema({
   timeSlot: { type: String, required: true }, // e.g. 10:00-11:00
   status: { type: String, enum: ['Pending','Confirmed','In Progress','Completed','Cancelled','Queued'], default: 'Pending' },
   notes: String,
+  estimatedCost: { type: Number, default: 0 },
   canModifyUntil: Date,
   serviceStartTime: Date, // When service actually started
   serviceEndTime: Date,   // When service completed

@@ -69,7 +69,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
     // Call backend logout
-  api.post('/api/auth/logout').catch(() => {}); // Ignore errors
+    api.post('/api/auth/logout').catch(() => {}); // Ignore errors
   };
 
   // Check if user has specific role

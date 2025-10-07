@@ -1,9 +1,11 @@
+import AuditLog from '../../models/inventory/AuditLog';
+import User from '../../models/User';
 // server/controllers/auditController.js
-const AuditLog = require("../../models/inventory/AuditLog");
-const User = require("../../models/User");
+
+
 
 // Get audit logs with pagination and filtering
-exports.getAuditLogs = async (req, res) => {
+export const getAuditLogs = async (req, res) => {
   try {
     const { 
       page = 1, 
@@ -59,7 +61,7 @@ exports.getAuditLogs = async (req, res) => {
 };
 
 // Get audit log by ID
-exports.getAuditLogById = async (req, res) => {
+export const getAuditLogById = async (req, res) => {
   try {
     const auditLog = await AuditLog.findById(req.params.id)
       .populate('userId', 'name email');
@@ -76,7 +78,7 @@ exports.getAuditLogById = async (req, res) => {
 };
 
 // Get audit summary statistics
-exports.getAuditSummary = async (req, res) => {
+export const getAuditSummary = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const dateFilter = {};

@@ -2,6 +2,7 @@ import Joi from 'joi';
 import dayjs from 'dayjs';
 import PDFDocument from 'pdfkit';
 import Booking from '../models/Booking.js';
+import Notification, { NOTIFICATION_TYPES } from '../models/inventory/Notification.js';
 import AuditLog from '../models/AuditLog.js';
 import User from '../models/User.js';
 import path from 'path';
@@ -186,6 +187,19 @@ async function processQueue(date, timeSlot) {
         $set: { estimatedServiceTime: new Date(Date.now() + 60 * 60 * 1000) } // Update estimated time
       }
     );
+    // Notify advisor for queued assignment
+    try {
+      await Notification.create({
+        userId: advisor._id,
+        type: 'SYSTEM',
+        title: 'Queued job assigned',
+        message: `${nextQueuedBooking.serviceType} for ${nextQueuedBooking.vehicle?.model || ''} on ${date} ${timeSlot}`,
+        link: '/advisor/inspections',
+        meta: new Map(Object.entries({ bookingId: nextQueuedBooking._id.toString(), timeSlot }))
+      });
+    } catch (e) {
+      console.warn('Failed to create advisor notification (queue):', e.message);
+    }
     
     return nextQueuedBooking;
   }
@@ -263,6 +277,20 @@ async function createBooking(req, res) {
         isLoyaltyEligible: user.isLoyaltyEligible
       } 
     });
+
+    // Create advisor notification
+    try {
+      await Notification.create({
+        userId: advisor._id,
+        type: 'SYSTEM',
+        title: 'New job assigned',
+        message: `${value.serviceType} for ${value.vehicle.model} (${value.vehicle.plate}) on ${value.date} ${value.timeSlot}`,
+        link: '/advisor/inspections',
+        meta: new Map(Object.entries({ bookingId: booking._id.toString(), timeSlot: value.timeSlot }))
+      });
+    } catch (e) {
+      console.warn('Failed to create advisor notification:', e.message);
+    }
     
     console.log('✅ Immediate booking process completed successfully');
     res.status(201).json({ 
@@ -883,9 +911,8 @@ const generatePDFReport = async (req, res) => {
     doc.font('Times-Bold').fontSize(12).fillColor('#000000').text('Report Information', { align: 'center' });
     doc.font('Times-Roman').fontSize(10).fillColor('#000000');
     doc.text(`Report Generated: ${new Date().toLocaleString()}`, { align: 'center' });
-    doc.text(`Booking ID: ${bookingId}`, { align: 'center' });
     doc.text(`Report Type: PDF Report`, { align: 'center' });
-    doc.moveDown(1);
+    doc.moveDown(2);
 
     // Section: Customer Information - Pure black headers, pure black content for readability
     doc.font('Times-Bold').fontSize(13).fillColor('#000000').text('CUSTOMER INFORMATION', 50, doc.y);
@@ -893,7 +920,7 @@ const generatePDFReport = async (req, res) => {
     doc.text(`Name: ${booking.user.name}`, 70, doc.y + 5);
     doc.text(`Email: ${booking.user.email}`, 70, doc.y);
     doc.text(`Phone: ${booking.user.phone}`, 70, doc.y);
-    doc.moveDown(0.5);
+    doc.moveDown(2);
 
     // Section: Service Details - Pure black headers, pure black content
     doc.font('Times-Bold').fontSize(13).fillColor('#000000').text('SERVICE DETAILS', 50, doc.y + 5);
@@ -903,7 +930,7 @@ const generatePDFReport = async (req, res) => {
     doc.text(`Time Slot: ${booking.timeSlot}`, 70, doc.y);
     doc.text(`Status: ${booking.status}`, 70, doc.y);
     doc.text(`Estimated Duration: ${booking.estimatedDuration} minutes`, 70, doc.y);
-    doc.moveDown(0.5);
+    doc.moveDown(2);
 
     // Section: Vehicle Information - Pure black headers, pure black content
     doc.font('Times-Bold').fontSize(13).fillColor('#000000').text('VEHICLE INFORMATION', 50, doc.y + 5);
@@ -911,7 +938,7 @@ const generatePDFReport = async (req, res) => {
     doc.text(`Model: ${booking.vehicle.model}`, 70, doc.y + 5);
     doc.text(`Year: ${booking.vehicle.year}`, 70, doc.y);
     doc.text(`License Plate: ${booking.vehicle.plate}`, 70, doc.y);
-    doc.moveDown(0.5);
+    doc.moveDown(2);
 
     // Section: Advisor Information - Pure black headers, pure black content
     doc.font('Times-Bold').fontSize(13).fillColor('#000000').text('ADVISOR INFORMATION', 50, doc.y + 5);
@@ -923,7 +950,7 @@ const generatePDFReport = async (req, res) => {
     } else {
       doc.text('Not assigned yet', 70, doc.y + 5);
     }
-    doc.moveDown(0.5);
+    doc.moveDown(2);
 
     // Section: Timeline - Pure black headers, pure black content
     doc.font('Times-Bold').fontSize(13).fillColor('#000000').text('TIMELINE', 50, doc.y + 5);
@@ -935,7 +962,7 @@ const generatePDFReport = async (req, res) => {
     if (booking.queuePosition) doc.text(`Queue Position: #${booking.queuePosition}`, 70, doc.y);
     if (booking.queueStartTime) doc.text(`Queue Start: ${new Date(booking.queueStartTime).toLocaleString()}`, 70, doc.y);
     if (booking.estimatedServiceTime) doc.text(`Estimated Service: ${new Date(booking.estimatedServiceTime).toLocaleString()}`, 70, doc.y);
-    doc.moveDown(0.5);
+    doc.moveDown(2);
 
     // Section: Notes - Pure black headers, pure black content
     if (booking.notes) {
@@ -945,11 +972,11 @@ const generatePDFReport = async (req, res) => {
     }
 
     // Footer - Properly aligned and centered with compact spacing
-    doc.moveDown(1.5);
+    doc.moveDown(6);
     
     // Add decorative line
     doc.moveTo(50, doc.y + 10).lineTo(545, doc.y + 10).lineWidth(1.5).strokeColor('#444444').stroke();
-    doc.moveDown(1);
+    doc.moveDown(2);
     
     // Footer text - properly centered and aligned
     doc.font('Times-Roman').fontSize(9).fillColor('#000000');

@@ -54,7 +54,7 @@ r.delete('/me', authRequired, deleteAccount);
 r.post('/me/avatar', authRequired, upload.single('avatar'), uploadAvatar);
 r.post('/loyalty-discount-request', authRequired, requestLoyaltyDiscount);
 
-r.get('/', authRequired, allowRoles('manager','admin'), listUsers);
+r.get('/', authRequired, allowRoles('manager','admin','hr_manager'), listUsers);
 r.post('/set-role', authRequired, allowRoles('manager','admin'), setRole);
 r.get('/audit-logs', authRequired, allowRoles('admin','manager'), getAuditLogs);
 r.get('/loyalty-requests', authRequired, allowRoles('finance_manager','admin'), getLoyaltyRequests);
@@ -64,16 +64,16 @@ r.get('/:userId/stats', authRequired, allowRoles('manager','admin'), getUserStat
 r.post('/create-test-advisors', createTestAdvisors);
 
 // Advisor Management Routes
-r.get('/advisors', authRequired, allowRoles('manager','admin'), getAdvisors);
+r.get('/advisors', authRequired, allowRoles('manager','admin','staff_manager','user'), getAdvisors);
 r.post('/advisors', authRequired, allowRoles('manager','admin'), createAdvisor);
 r.put('/advisors/:id', authRequired, allowRoles('manager','admin'), updateAdvisor);
 r.delete('/advisors/:id', authRequired, allowRoles('manager','admin'), deleteAdvisor);
 
-// Staff Management Routes (Admin only)
-r.get('/staff', authRequired, allowRoles('admin'), getStaff);
+// Staff Management Routes (Admin and Advisor can view, Admin can manage)
+r.get('/staff', authRequired, allowRoles('admin', 'advisor', 'hr_manager'), getStaff);
 r.post('/staff', authRequired, allowRoles('admin'), createStaff);
 r.put('/staff/:id', authRequired, allowRoles('admin'), updateStaff);
-r.delete('/staff/:id', authRequired, allowRoles('admin'), deleteStaff);
+r.delete('/staff/:id', authRequired, allowRoles('admin','hr_manager'), deleteStaff);
 r.patch('/staff/:id/availability', authRequired, allowRoles('admin'), updateStaffAvailability);
 
 // Advisor availability route (put after staff routes to avoid conflicts)

@@ -4,8 +4,6 @@ import { login, register, me, logout, requestPasswordReset, resetPassword } from
 
 import authRequired from '../middleware/auth.js';
 
-import { authRequired } from '../middleware/auth.js';
-
 import { testSMTPConnection } from '../utils/email.js';
 import User from '../models/User.js';
 import crypto from 'crypto';
@@ -101,8 +99,5 @@ r.get('/test-smtp', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-
-r.post('/reset-password', resetPassword);
-
 
 export default r;

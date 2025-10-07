@@ -2,6 +2,7 @@ import express from 'express';
 import PurchaseOrder from '../../models/inventory/PurchaseOrder.js';
 import Part from '../../models/inventory/Part.js';
 import Supplier from '../../models/inventory/Supplier.js';
+import Capital from '../../models/finance/Capital.js';
 import { logAudit } from '../../utils/logAudit.js';
 import auth from '../../middleware/auth.js';
 
@@ -111,7 +112,7 @@ router.get('/', auth, async (req, res) => {
     const skip = (page - 1) * limit;
     
     const purchaseOrders = await PurchaseOrder.find(filter)
-      .populate('supplier', 'name email phone')
+      .populate('supplier', 'companyName primaryContact.email primaryContact.phone')
       .populate('items.part', 'name partCode description')
       .populate('createdBy', 'name email')
       .populate('submittedBy', 'name email')
@@ -172,7 +173,7 @@ router.get('/statistics', auth, async (req, res) => {
 router.get('/:id', auth, async (req, res) => {
   try {
     const purchaseOrder = await PurchaseOrder.findById(req.params.id)
-      .populate('supplier', 'name email phone address')
+      .populate('supplier', 'companyName primaryContact.email primaryContact.phone addresses')
       .populate('items.part', 'name partCode description')
       .populate('createdBy', 'name email')
       .populate('submittedBy', 'name email')
@@ -301,10 +302,10 @@ router.patch('/:id/submit', auth, async (req, res) => {
 // Approve Purchase Order (Submitted → Approved)
 router.patch('/:id/approve', auth, async (req, res) => {
   try {
-    // Check if user has manager role
-    if (!checkRole(req.user, ['manager'])) {
+    // Check if user has manager or finance_manager role
+    if (!checkRole(req.user, ['manager', 'finance_manager'])) {
       return res.status(403).json({ 
-        message: 'Access denied. Only users with Manager role can approve purchase orders.' 
+        message: 'Access denied. Only users with Manager or Finance Manager role can approve purchase orders.' 
       });
     }
 
@@ -335,6 +336,25 @@ router.patch('/:id/approve', auth, async (req, res) => {
     
     await purchaseOrder.approve(req.user.id);
     
+    // Deduct from capital if user is finance manager
+    if (req.user.role === 'finance_manager' || req.user.role === 'admin') {
+      try {
+        const capital = await Capital.getOrCreate();
+        await capital.spendCapital(
+          purchaseOrder.totalAmount,
+          `Purchase Order: ${purchaseOrder.poNumber} - ${purchaseOrder.supplier?.companyName || 'Unknown Supplier'}`,
+          purchaseOrder._id,
+          'PurchaseOrder',
+          req.user.id
+        );
+        console.log(`💰 Capital deducted: $${purchaseOrder.totalAmount} for PO ${purchaseOrder.poNumber}`);
+      } catch (capitalError) {
+        console.error('Error deducting from capital:', capitalError);
+        // Don't fail the approval if capital deduction fails
+        // Just log the error
+      }
+    }
+    
     // Audit log for approve
     await logAudit({
       userId: req.user?.id,
@@ -356,6 +376,74 @@ router.patch('/:id/approve', auth, async (req, res) => {
   } catch (error) {
     console.error('Error approving purchase order:', error);
     res.status(500).json({ message: 'Error approving purchase order', error: error.message });
+  }
+});
+
+// Reject Purchase Order (Submitted → Draft)
+router.patch('/:id/reject', auth, async (req, res) => {
+  try {
+    // Check if user has manager or finance_manager role
+    if (!checkRole(req.user, ['manager', 'finance_manager'])) {
+      return res.status(403).json({ 
+        message: 'Access denied. Only users with Manager or Finance Manager role can reject purchase orders.' 
+      });
+    }
+
+    const purchaseOrder = await PurchaseOrder.findById(req.params.id);
+    
+    if (!purchaseOrder) {
+      return res.status(404).json({ message: 'Purchase Order not found' });
+    }
+    
+    if (purchaseOrder.status !== 'submitted') {
+      return res.status(400).json({ 
+        message: 'Purchase Order cannot be rejected. Ensure it is in submitted status.' 
+      });
+    }
+    
+    // Store old state for audit
+    const oldPO = purchaseOrder.toObject();
+    
+    const body = req.body || {};
+    if (body.rejectionNotes) {
+      purchaseOrder.rejectionNotes = body.rejectionNotes;
+    }
+    
+    // Capture security information
+    purchaseOrder.ipAddress = req.ip || req.connection.remoteAddress;
+    purchaseOrder.userAgent = req.get('User-Agent');
+    purchaseOrder.lastModifiedBy = req.user.id;
+    
+    // Reject PO (set back to draft)
+    purchaseOrder.status = 'draft';
+    purchaseOrder.rejectedAt = new Date();
+    purchaseOrder.rejectedBy = req.user.id;
+    purchaseOrder.submittedAt = null;
+    purchaseOrder.submittedBy = null;
+    
+    await purchaseOrder.save();
+    
+    // Audit log for reject
+    await logAudit({
+      userId: req.user?.id,
+      entityType: 'PurchaseOrder',
+      entityId: purchaseOrder._id,
+      action: 'update',
+      before: oldPO,
+      after: purchaseOrder,
+      source: 'UI'
+    });
+    
+    console.log(`🔐 PO ${purchaseOrder.poNumber} rejected by: ${req.user.name} (${req.user.email})`);
+    
+    res.json({
+      message: 'Purchase Order rejected successfully',
+      purchaseOrder: await purchaseOrder.populate(['supplier', 'items.part'])
+    });
+    
+  } catch (error) {
+    console.error('Error rejecting purchase order:', error);
+    res.status(500).json({ message: 'Error rejecting purchase order', error: error.message });
   }
 });
 
@@ -474,7 +562,7 @@ router.get('/:id/pdf', auth, async (req, res) => {
     const { id } = req.params;
     
     const purchaseOrder = await PurchaseOrder.findById(id)
-      .populate('supplier', 'name email phone address')
+      .populate('supplier', 'companyName primaryContact.email primaryContact.phone addresses')
       .populate('items.part', 'name partCode description')
       .populate('createdBy', 'name email');
 
@@ -520,7 +608,7 @@ router.get('/download/all-pdf', auth, async (req, res) => {
     }
 
     const purchaseOrders = await PurchaseOrder.find(filter)
-      .populate('supplier', 'name email phone address')
+      .populate('supplier', 'companyName primaryContact.email primaryContact.phone addresses')
       .populate('items.part', 'name partCode description')
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1 });

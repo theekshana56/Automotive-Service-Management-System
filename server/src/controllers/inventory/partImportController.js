@@ -1,9 +1,12 @@
-const csv = require('csv-parser');
-const fs = require('fs');
-const Part = require('../../models/inventory/Part');
+import csv from 'csv-parser';
+import fs from 'fs';
+import Part from '../../models/inventory/Part';
+
+
+
 const { logAudit } = require('../../utils/logAudit');
 
-exports.handleImport = async (req, res) => {
+export const handleImport = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'No file uploaded' });

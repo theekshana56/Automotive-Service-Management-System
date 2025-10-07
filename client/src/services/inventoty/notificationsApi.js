@@ -14,3 +14,13 @@ export const markAllRead = async () => {
   const { data } = await api.post('/api/notifications/read-all');
   return data;
 };
+
+export const createNotification = async (notificationData) => {
+  const { data } = await api.post('/api/notifications', notificationData);
+  return data;
+};
+
+export const deleteNotification = async (id) => {
+  const { data } = await api.delete(`/api/notifications/${id}`);
+  return data;
+};

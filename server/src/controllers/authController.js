@@ -36,7 +36,10 @@ export async function login(req, res) {
   const tokens = issueTokens(user);
   setAuthCookies(res, tokens);
   await AuditLog.create({ actor: user._id, action: 'login' });
-  res.json({ user: { id: user._id, name: user.name, email: user.email, role: user.role, avatarUrl: user.avatarUrl } });
+  res.json({ 
+    user: { id: user._id, name: user.name, email: user.email, role: user.role, avatarUrl: user.avatarUrl },
+    token: tokens.access // Also return the token for client-side use
+  });
 }
 
 export async function me(req, res) {
@@ -44,21 +47,49 @@ export async function me(req, res) {
   if (!user) {
     return res.status(404).json({ message: 'User not found' });
   }
-  res.json({
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      avatarUrl: user.avatarUrl,
-      bookingCount: user.bookingCount,
-      isLoyaltyEligible: user.isLoyaltyEligible,
-      loyaltyDiscountRequested: user.loyaltyDiscountRequested,
-      loyaltyDiscountApproved: user.loyaltyDiscountApproved,
-      loyaltyDiscountRequestDate: user.loyaltyDiscountRequestDate,
-      loyaltyDiscountApprovalDate: user.loyaltyDiscountApprovalDate
+
+  let userData = {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    avatarUrl: user.avatarUrl,
+    bookingCount: user.bookingCount,
+    isLoyaltyEligible: user.isLoyaltyEligible,
+    loyaltyDiscountRequested: user.loyaltyDiscountRequested,
+    loyaltyDiscountApproved: user.loyaltyDiscountApproved,
+    loyaltyDiscountRequestDate: user.loyaltyDiscountRequestDate,
+    loyaltyDiscountApprovalDate: user.loyaltyDiscountApprovalDate
+  };
+
+  // If user is a mechanic, fetch additional mechanic data
+  if (user.role === 'mechanic') {
+    try {
+      const Mechanic = (await import('../models/Mechanic.js')).default;
+      const mechanicData = await Mechanic.findOne({ userId: user._id });
+      
+      if (mechanicData) {
+        userData = {
+          ...userData,
+          location: mechanicData.location,
+          specialties: mechanicData.specialties,
+          specializations: mechanicData.specialties, // Alias for compatibility
+          hourlyRate: mechanicData.hourlyRate,
+          experience: mechanicData.experience,
+          rating: mechanicData.rating?.average || 0,
+          availability: mechanicData.availability,
+          isOnline: mechanicData.isOnline,
+          completedJobs: mechanicData.completedJobs,
+          responseTime: mechanicData.responseTime
+        };
+      }
+    } catch (error) {
+      console.error('Error fetching mechanic data:', error);
+      // Continue without mechanic data if there's an error
     }
-  });
+  }
+
+  res.json({ user: userData });
 }
 
 export async function logout(req, res) {

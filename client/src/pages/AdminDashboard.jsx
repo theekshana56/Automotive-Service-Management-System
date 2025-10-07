@@ -34,7 +34,7 @@ export default function AdminDashboard() {
   const loadStaff = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/users/staff');
+      const response = await api.get('/api/users/staff');
       setStaff(response.data.staff || []);
     } catch (error) {
       console.error('Failed to load staff:', error);
@@ -49,10 +49,10 @@ export default function AdminDashboard() {
 
     try {
       if (editingStaff) {
-        await api.put(`/users/staff/${editingStaff._id}`, form);
+        await api.put(`/api/users/staff/${editingStaff._id}`, form);
         setMessage('Staff member updated successfully!');
       } else {
-        await api.post('/users/staff', form);
+        await api.post('/api/users/staff', form);
         setMessage('Staff member created successfully!');
       }
       
@@ -96,7 +96,7 @@ export default function AdminDashboard() {
     
     if (result.isConfirmed) {
       try {
-        await api.delete(`/users/staff/${staffId}`);
+        await api.delete(`/api/users/staff/${staffId}`);
         setMessage('Staff member deleted successfully!');
         loadStaff();
       } catch (error) {
@@ -107,7 +107,7 @@ export default function AdminDashboard() {
 
   const toggleAvailability = async (staffId, currentStatus) => {
     try {
-      await api.patch(`/users/staff/${staffId}/availability`, {
+      await api.patch(`/api/users/staff/${staffId}/availability`, {
         isAvailable: !currentStatus
       });
       setMessage('Staff availability updated!');
