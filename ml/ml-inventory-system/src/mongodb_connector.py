@@ -4,6 +4,11 @@ Connects to your existing MongoDB database to fetch real inventory data
 """
 
 import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
 import pandas as pd
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
@@ -39,11 +44,22 @@ class MongoDBConnector:
             # Test connection
             self.client.admin.command('ping')
             
-            # Extract database name from connection string or use default
-            if 'automotive' in self.connection_string.lower():
-                db_name = 'automotive'
-            else:
-                db_name = 'automotive_service_management'
+            # Extract database name from env, connection string, or use default
+            db_name = os.getenv('MONGODB_DATABASE') or os.getenv('MONGO_DATABASE')
+            if not db_name:
+                from urllib.parse import urlparse
+                try:
+                    parsed = urlparse(self.connection_string)
+                    if parsed.path and parsed.path != '/':
+                        db_name = parsed.path.strip('/').split('?')[0]
+                except Exception:
+                    pass
+            
+            if not db_name:
+                if 'automotive' in self.connection_string.lower():
+                    db_name = 'automotive'
+                else:
+                    db_name = 'test'
             
             self.db = self.client[db_name]
             logger.info(f"Connected to MongoDB database: {db_name}")

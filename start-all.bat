@@ -2,9 +2,9 @@
 echo Starting AutoElite full stack (AI API + Server + Client)...
 echo.
 
-REM Start Elite Bot API (Python)
-echo Starting Elite Bot API on http://127.0.0.1:5001 ...
-start cmd /k "cd /d %~dp0ml && python start_elite_bot_api.py --skip-training --host 127.0.0.1 --port 5001"
+REM Start ML Inventory Service (Python)
+echo Starting ML Inventory Service on http://localhost:8001 ...
+start cmd /k "cd /d %~dp0ml\ml-inventory-system && start_ml_service_mongodb.bat"
 
 REM Wait a moment for API to boot
 timeout /t 3 /nobreak > nul
@@ -22,11 +22,11 @@ start cmd /k "cd /d %~dp0client && npm run dev -- --host"
 
 echo.
 echo Services launching:
-echo  - Elite Bot API:  http://127.0.0.1:5001/health
-echo  - Server:         http://localhost:5000/api/health
-echo  - Client:         http://localhost:5173
+echo  - ML Service:  http://localhost:8001/health
+echo  - Server:      http://localhost:5000/api/health
+echo  - Client:      http://localhost:5173
 echo.
-echo Note: Ensure MongoDB is running locally on port 27017 before starting the server.
+echo Note: Connecting to MongoDB via MONGO_URI configured in the .env file.
 echo.
 pause
 

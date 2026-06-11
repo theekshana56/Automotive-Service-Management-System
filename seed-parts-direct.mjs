@@ -1,4 +1,5 @@
 // Direct database seeding script for 45 parts
+import 'dotenv/config';
 import mongoose from 'mongoose';
 import Part from './server/src/models/inventory/Part.js';
 
@@ -6,7 +7,7 @@ import Part from './server/src/models/inventory/Part.js';
 mongoose.set('bufferCommands', false);
 
 // Database connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/AutoElite';
+const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/AutoElite';
 
 // Supplier IDs from the database
 const SUPPLIERS = {
